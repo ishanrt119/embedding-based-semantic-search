@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-py"
+  interface = "asyncio"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  datasets  Dataset[]
+}
+
+model Dataset {
+  id        String   @id @default(uuid())
+  name      String
+  type      String   // PDF, CSV, TXT, DOCX
+  status    String   // PENDING, PROCESSING, COMPLETED, FAILED
+  chunks    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents Document[]
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  datasetId String
+  content   String
+  page_num  Int?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  dataset   Dataset  @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+}
