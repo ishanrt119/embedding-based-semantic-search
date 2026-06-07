@@ -1,5 +1,5 @@
 import fitz  # PyMuPDF
-from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter, CharacterTextSplitter
 from typing import List, Dict
 
 def extract_text_from_pdf(file_path: str) -> List[Dict]:
