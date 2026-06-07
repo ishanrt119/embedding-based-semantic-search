@@ -9,33 +9,44 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
+  id        String     @id @default(uuid())
+  email     String     @unique
   password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  datasets  Dataset[]
-}
-
-model Dataset {
-  id        String   @id @default(uuid())
-  name      String
-  type      String   // PDF, CSV, TXT, DOCX
-  status    String   // PENDING, PROCESSING, COMPLETED, FAILED
-  chunks    Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   documents Document[]
 }
 
+enum UploadStatus {
+  uploaded
+  processing
+  completed
+  failed
+}
+
+enum ProcessingStatus {
+  pending
+  extracting
+  extracted
+  chunked
+  embedded
+  indexed
+}
+
 model Document {
-  id        String   @id @default(uuid())
-  datasetId String
-  content   String
-  page_num  Int?
-  metadata  Json?
-  createdAt DateTime @default(now())
-  dataset   Dataset  @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  id                String           @id @default(uuid())
+  user_id           String
+  filename          String
+  original_filename String
+  file_type         String
+  file_size         Int
+  storage_path      String
+  upload_status     UploadStatus     @default(uploaded)
+  processing_status ProcessingStatus @default(pending)
+  total_pages       Int?
+  total_characters  Int?
+  created_at        DateTime         @default(now())
+  updated_at        DateTime         @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }

@@ -18,3 +18,4 @@ openai
 rank_bm25
 numpy
 pandas
+python-docx
