@@ -49,4 +49,20 @@ model Document {
   updated_at        DateTime         @updatedAt
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  chunks Chunk[]
+}
+
+model Chunk {
+  id              String   @id @default(uuid())
+  document_id     String
+  user_id         String
+  chunk_index     Int
+  chunk_text      String
+  chunk_strategy  String
+  page_number     Int?
+  token_count     Int
+  character_count Int
+  created_at      DateTime @default(now())
+
+  document Document @relation(fields: [document_id], references: [id], onDelete: Cascade)
 }

@@ -147,3 +147,80 @@ async def delete_document(document_id: str, user_id: str = Depends(get_current_u
         shutil.rmtree(doc_dir)
         
     return {"message": "Document deleted successfully"}
+
+from pydantic import BaseModel
+
+class ChunkRequest(BaseModel):
+    strategy: str = "recursive"
+    chunk_size: int = 1000
+    overlap: int = 200
+
+from services.chunking_service import create_chunks, delete_chunks as delete_document_chunks, get_chunk_statistics
+
+@router.post("/{document_id}/chunk")
+async def process_chunking(document_id: str, request: ChunkRequest, user_id: str = Depends(get_current_user_id)):
+    # Verify document ownership
+    document = await db.document.find_unique(where={"id": document_id})
+    if not document or document.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    try:
+        result = await create_chunks(
+            document_id=document_id,
+            strategy=request.strategy,
+            chunk_size=request.chunk_size,
+            overlap=request.overlap
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@router.get("/{document_id}/chunks")
+async def get_document_chunks(
+    document_id: str, 
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    user_id: str = Depends(get_current_user_id)
+):
+    document = await db.document.find_unique(where={"id": document_id})
+    if not document or document.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    skip = (page - 1) * limit
+    total = await db.chunk.count(where={"document_id": document_id})
+    chunks = await db.chunk.find_many(
+        where={"document_id": document_id},
+        skip=skip,
+        take=limit,
+        order={"chunk_index": "asc"}
+    )
+    
+    return {
+        "data": chunks,
+        "pagination": {
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit
+        }
+    }
+
+@router.delete("/{document_id}/chunks")
+async def delete_all_chunks(document_id: str, user_id: str = Depends(get_current_user_id)):
+    document = await db.document.find_unique(where={"id": document_id})
+    if not document or document.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    await delete_document_chunks(document_id)
+    return {"message": "Chunks deleted successfully"}
+
+@router.get("/{document_id}/chunk-stats")
+async def get_document_chunk_stats(document_id: str, user_id: str = Depends(get_current_user_id)):
+    document = await db.document.find_unique(where={"id": document_id})
+    if not document or document.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    stats = await get_chunk_statistics(document_id)
+    return stats
