@@ -2,6 +2,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from services.logger import logger
 from dotenv import load_dotenv
+import certifi
 
 load_dotenv()
 
@@ -13,7 +14,7 @@ class MongoDBClient:
         try:
             uri = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
             db_name = os.getenv("DATABASE_NAME", "semantic_search")
-            self.client = AsyncIOMotorClient(uri)
+            self.client = AsyncIOMotorClient(uri, tls=True, tlsAllowInvalidCertificates=True)
             self.db = self.client[db_name]
             logger.info(f"Connected to MongoDB database: {db_name}")
         except Exception as e:

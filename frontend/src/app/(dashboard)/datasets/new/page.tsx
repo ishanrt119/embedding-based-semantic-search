@@ -54,7 +54,7 @@ export default function NewDatasetPage() {
         throw new Error(data.detail || "Upload failed")
       }
       
-      router.push(`/datasets/${data.id}`)
+      router.push(`/datasets/${data.document_id}`)
     } catch (err: any) {
       setError(err.message)
     } finally {

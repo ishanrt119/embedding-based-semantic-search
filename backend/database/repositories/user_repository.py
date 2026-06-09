@@ -9,11 +9,13 @@ class UserRepository:
         return db_client.db.users
 
     @staticmethod
-    async def create_user(email: str, password_hash: str) -> Dict[str, Any]:
+    async def create_user(email: str, password_hash: str, first_name: str = "", last_name: str = "") -> Dict[str, Any]:
         user_id = str(uuid.uuid4())
         user_doc = {
             "id": user_id,
             "email": email,
+            "first_name": first_name,
+            "last_name": last_name,
             "password": password_hash,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()

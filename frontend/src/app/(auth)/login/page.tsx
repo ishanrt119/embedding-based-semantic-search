@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { useRouter } from "next/navigation"
-import { Loader2, Database, Shield, Zap } from "lucide-react"
+import { Loader2, Database, Shield, Zap, Lock, HardDrive, FileText, Activity } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -34,7 +34,6 @@ export default function LoginPage() {
         throw new Error(data.detail || "Login failed")
       }
 
-      // Fetch user data
       const meRes = await fetch("http://localhost:8000/api/auth/me", {
         headers: { "Authorization": `Bearer ${data.access_token}` }
       })
@@ -54,121 +53,157 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen bg-white">
       
-      {/* Left: Product Branding */}
-      <div className="hidden lg:flex flex-col flex-1 bg-slate-50 border-r border-gray-200 p-12 justify-between">
-        <Link href="/" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity">
-          <div className="w-8 h-8 rounded bg-blue-600 text-white flex items-center justify-center font-bold text-sm">A</div>
-          <span className="font-semibold text-lg tracking-tight text-gray-900">Aether</span>
-        </Link>
+      {/* Left: Product Branding & Features */}
+      <div className="hidden lg:flex flex-col flex-1 bg-[#F8FAFC] border-r border-gray-200 p-12 justify-between relative overflow-hidden">
+        
+        {/* Subtle background pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
 
-        <div className="max-w-md space-y-8">
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight leading-tight">
-            Enterprise document intelligence, simplified.
-          </h1>
-          
-          <div className="space-y-6">
-            <div className="flex gap-4">
-              <div className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0 shadow-sm">
-                <Database className="w-5 h-5 text-blue-600" />
+        <div className="relative z-10 flex flex-col h-full justify-between">
+          <Link href="/" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity">
+            <div className="w-8 h-8 rounded bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">A</div>
+            <span className="font-bold text-lg tracking-tight text-gray-900">Aether</span>
+          </Link>
+
+          <div className="max-w-lg space-y-8 my-auto py-12">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 tracking-tight leading-tight">
+                Find answers across thousands of documents in seconds.
+              </h1>
+              <p className="mt-4 text-base text-gray-600 leading-relaxed">
+                Transform static files into searchable knowledge with semantic search, intelligent retrieval, and citation-aware conversations.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                <Zap className="w-5 h-5 text-blue-600 mb-3" />
+                <h3 className="font-semibold text-gray-900 text-sm">Semantic Search</h3>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">Find information based on meaning, not exact keywords.</p>
               </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Automated Indexing</h3>
-                <p className="text-sm text-gray-500 mt-1">Upload files and we handle the chunking, embedding, and vector storage.</p>
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                <Database className="w-5 h-5 text-blue-600 mb-3" />
+                <h3 className="font-semibold text-gray-900 text-sm">Knowledge Retrieval</h3>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">Access insights across massive document collections instantly.</p>
+              </div>
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                <FileText className="w-5 h-5 text-blue-600 mb-3" />
+                <h3 className="font-semibold text-gray-900 text-sm">Source Citations</h3>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">Trace every answer securely back to its original document.</p>
+              </div>
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                <Activity className="w-5 h-5 text-blue-600 mb-3" />
+                <h3 className="font-semibold text-gray-900 text-sm">Rich Analytics</h3>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">Understand platform usage and strict search performance metrics.</p>
               </div>
             </div>
-            <div className="flex gap-4">
-              <div className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0 shadow-sm">
-                <Zap className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Hybrid Retrieval</h3>
-                <p className="text-sm text-gray-500 mt-1">Combine semantic similarity with keyword matching for highest accuracy.</p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <div className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0 shadow-sm">
-                <Shield className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Secure Isolation</h3>
-                <p className="text-sm text-gray-500 mt-1">Enterprise-grade multi-tenant architecture keeps your data strictly isolated.</p>
-              </div>
+
+            {/* Metrics Highlights */}
+            <div className="flex flex-wrap items-center gap-4 pt-4">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 border border-blue-100 text-xs font-medium text-blue-700">
+                <HardDrive className="w-3 h-3" /> FAISS Vector Indexing
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-gray-200 text-xs font-medium text-gray-700 shadow-sm">
+                Hybrid Search Architecture
+              </span>
             </div>
           </div>
-        </div>
 
-        <div className="text-sm text-gray-500">
-          © 2026 Aether Search Inc.
+          <div className="text-sm text-gray-500 flex items-center justify-between mt-auto">
+            <span>© 2026 Aether Search Inc.</span>
+            <div className="flex gap-4">
+              <Link href="/privacy" className="hover:text-gray-900">Privacy</Link>
+              <Link href="/terms" className="hover:text-gray-900">Terms</Link>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Right: Login Form */}
-      <div className="flex-1 flex flex-col justify-center px-8 sm:px-16 lg:px-24">
-        <div className="w-full max-w-sm mx-auto space-y-8">
+      <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-24 xl:px-32 relative bg-white">
+        
+        <div className="w-full max-w-[450px] mx-auto">
           
           {/* Mobile Header */}
-          <Link href="/" className="lg:hidden flex items-center justify-center gap-2 mb-8 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 rounded bg-blue-600 text-white flex items-center justify-center font-bold text-sm">A</div>
-            <span className="font-semibold text-lg tracking-tight text-gray-900">Aether</span>
+          <Link href="/" className="lg:hidden flex items-center justify-center gap-2 mb-10 hover:opacity-80 transition-opacity">
+            <div className="w-8 h-8 rounded bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">A</div>
+            <span className="font-bold text-lg tracking-tight text-gray-900">Aether</span>
           </Link>
 
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-gray-900">Sign in to your account</h2>
-            <p className="text-sm text-gray-500 mt-2">Welcome back to Aether workspace.</p>
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold tracking-tight text-gray-900">Welcome back</h2>
+            <p className="text-sm text-gray-500 mt-2">Sign in to your Aether enterprise workspace.</p>
           </div>
 
           {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md border border-red-200">
+            <div className="mb-6 p-3 text-sm text-red-600 bg-red-50 rounded-md border border-red-200 flex items-start gap-2">
+              <div className="mt-0.5 shrink-0 w-4 h-4 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-[10px]">!</div>
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
-              <Input 
-                id="email"
-                type="email" 
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="name@company.com"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <Link href="/forgot-password" className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                  Forgot password?
-                </Link>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email address</Label>
+                <Input 
+                  id="email"
+                  type="email" 
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="name@company.com"
+                  className="h-10"
+                  required
+                />
               </div>
-              <Input 
-                id="password"
-                type="password" 
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-            
-            <Button 
-              type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              {isSubmitting ? "Signing in..." : "Sign in"}
-            </Button>
-          </form>
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link href="/forgot-password" className="text-sm font-medium text-blue-600 hover:text-blue-700">
+                    Forgot password?
+                  </Link>
+                </div>
+                <Input 
+                  id="password"
+                  type="password" 
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="h-10"
+                  required
+                />
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="remember" className="rounded border-gray-300 text-blue-600 focus:ring-blue-600 w-4 h-4" />
+                <Label htmlFor="remember" className="font-normal text-gray-600">Remember me for 30 days</Label>
+              </div>
 
-          <p className="text-sm text-center text-gray-600">
+              <Button 
+                type="submit" 
+                className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white shadow-sm mt-2 font-medium"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                {isSubmitting ? "Signing in..." : "Sign in"}
+              </Button>
+            </form>
+          </div>
+
+          <p className="text-sm text-center text-gray-600 mt-6">
             Don't have an account?{" "}
             <Link href="/register" className="font-medium text-blue-600 hover:text-blue-700">
-              Sign up
+              Create an account
             </Link>
           </p>
+
+          {/* Trust Indicators */}
+          <div className="mt-12 flex items-center justify-center gap-6 text-[11px] font-medium text-gray-400 uppercase tracking-wider">
+            <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> Secure Auth</span>
+            <span className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> Encrypted Storage</span>
+            <span className="flex items-center gap-1.5"><Database className="w-3.5 h-3.5" /> Enterprise Search</span>
+          </div>
 
         </div>
       </div>
