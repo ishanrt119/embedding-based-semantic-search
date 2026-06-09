@@ -30,12 +30,30 @@ class ChunkRepository:
         return chunks_data
 
     @staticmethod
-    async def count_chunks_by_document(document_id: str) -> int:
-        return await ChunkRepository.get_collection().count_documents({"document_id": document_id})
+    async def count_chunks_by_document(document_id: str, search: Optional[str] = None) -> int:
+        query = {"document_id": document_id}
+        if search:
+            or_conditions = [
+                {"content": {"$regex": search, "$options": "i"}},
+                {"id": search}
+            ]
+            if search.isdigit():
+                or_conditions.append({"page_number": int(search)})
+            query["$or"] = or_conditions
+        return await ChunkRepository.get_collection().count_documents(query)
 
     @staticmethod
-    async def get_chunks_by_document(document_id: str, skip: int = 0, limit: int = 10) -> List[Dict[str, Any]]:
-        cursor = ChunkRepository.get_collection().find({"document_id": document_id}).sort("chunk_index", 1).skip(skip).limit(limit)
+    async def get_chunks_by_document(document_id: str, skip: int = 0, limit: int = 10, search: Optional[str] = None) -> List[Dict[str, Any]]:
+        query = {"document_id": document_id}
+        if search:
+            or_conditions = [
+                {"content": {"$regex": search, "$options": "i"}},
+                {"id": search}
+            ]
+            if search.isdigit():
+                or_conditions.append({"page_number": int(search)})
+            query["$or"] = or_conditions
+        cursor = ChunkRepository.get_collection().find(query).sort("chunk_index", 1).skip(skip).limit(limit)
         return await cursor.to_list(length=limit)
 
     @staticmethod

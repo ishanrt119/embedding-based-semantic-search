@@ -201,6 +201,7 @@ async def get_document_chunks(
     document_id: str, 
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
+    search: Optional[str] = Query(None),
     user_id: str = Depends(get_current_user_id)
 ):
     document = await DocumentRepository.get_document_by_id(document_id)
@@ -208,8 +209,8 @@ async def get_document_chunks(
         raise HTTPException(status_code=404, detail="Document not found")
         
     skip = (page - 1) * limit
-    total = await ChunkRepository.count_chunks_by_document(document_id)
-    chunks = await ChunkRepository.get_chunks_by_document(document_id, skip=skip, limit=limit)
+    total = await ChunkRepository.count_chunks_by_document(document_id, search)
+    chunks = await ChunkRepository.get_chunks_by_document(document_id, skip=skip, limit=limit, search=search)
     
     for chunk in chunks:
         if "_id" in chunk:

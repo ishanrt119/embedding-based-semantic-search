@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
-import { FileText, Database, Settings, Activity, Trash2, Loader2, Calendar, HardDrive, Hash, Download, RefreshCw, Plus, Clock, Search } from "lucide-react"
+import { FileText, Database, Settings, Activity, Trash2, Loader2, Calendar, HardDrive, Hash, Download, RefreshCw, Plus, Clock, Search, ChevronLeft, ChevronRight, Eye, X, Settings2, AlignLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Document {
   id: string
@@ -31,9 +32,26 @@ export default function DatasetDetailsPage() {
   const [embeddingCount, setEmbeddingCount] = useState<number>(0)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Chunking UI State
+  const [showChunkConfig, setShowChunkConfig] = useState(false)
+  const [isGeneratingChunks, setIsGeneratingChunks] = useState(false)
+  const [chunkStrategy, setChunkStrategy] = useState("recursive")
+  const [chunkSize, setChunkSize] = useState(1000)
+  const [chunkOverlap, setChunkOverlap] = useState(200)
+
+  // Chunk Data State
+  const [chunks, setChunks] = useState<any[]>([])
+  const [chunkPage, setChunkPage] = useState(1)
+  const [chunkLimit, setChunkLimit] = useState(10)
+  const [chunkTotalPages, setChunkTotalPages] = useState(1)
+  const [chunkSearch, setChunkSearch] = useState("")
+  const [isFetchingChunks, setIsFetchingChunks] = useState(false)
+
+  // Chunk Viewer State
+  const [selectedChunk, setSelectedChunk] = useState<any | null>(null)
+
   const fetchDatasetData = async () => {
     try {
-      // Fetch document, chunks, and embeddings concurrently
       const [docRes, chunkRes, embRes] = await Promise.all([
         fetch(`http://localhost:8000/api/documents/${id}`, { headers: { "Authorization": `Bearer ${token}` } }),
         fetch(`http://localhost:8000/api/documents/${id}/chunk-stats`, { headers: { "Authorization": `Bearer ${token}` } }),
@@ -63,11 +81,94 @@ export default function DatasetDetailsPage() {
     }
   }
 
+  const fetchChunks = async (page: number, search: string = "") => {
+    if (!token || !id) return
+    setIsFetchingChunks(true)
+    try {
+      const url = new URL(`http://localhost:8000/api/documents/${id}/chunks`)
+      url.searchParams.append("page", page.toString())
+      url.searchParams.append("limit", chunkLimit.toString())
+      if (search) url.searchParams.append("search", search)
+      
+      const res = await fetch(url.toString(), {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setChunks(data.data || [])
+        setChunkTotalPages(data.pagination?.total_pages || 1)
+        setChunkPage(data.pagination?.page || 1)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsFetchingChunks(false)
+    }
+  }
+
   useEffect(() => {
     if (token && id) {
       fetchDatasetData()
     }
   }, [token, id])
+
+  useEffect(() => {
+    if (chunkStats?.total_chunks > 0) {
+      fetchChunks(chunkPage, chunkSearch)
+    }
+  }, [chunkStats?.total_chunks, chunkPage])
+
+  const handleGenerateChunks = async (isRegenerating: boolean = false) => {
+    if (!token || !id) return
+    setIsGeneratingChunks(true)
+    try {
+      const endpoint = isRegenerating ? "rechunk" : "chunk"
+      const res = await fetch(`http://localhost:8000/api/documents/${id}/${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          strategy: chunkStrategy,
+          chunk_size: chunkSize,
+          chunk_overlap: chunkOverlap
+        })
+      })
+      
+      if (res.ok) {
+        setShowChunkConfig(false)
+        setChunkPage(1)
+        setChunkSearch("")
+        await fetchDatasetData()
+      } else {
+        const errData = await res.json()
+        alert(`Failed to generate chunks: ${errData.detail}`)
+      }
+    } catch (err) {
+      console.error(err)
+      alert("An error occurred while generating chunks.")
+    } finally {
+      setIsGeneratingChunks(false)
+    }
+  }
+
+  const handleDeleteChunks = async () => {
+    if (!confirm("Are you sure you want to delete all chunks?")) return
+    try {
+      const res = await fetch(`http://localhost:8000/api/documents/${id}/chunks`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+      if (res.ok) {
+        setChunks([])
+        setChunkPage(1)
+        await fetchDatasetData()
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this dataset? This action cannot be undone.")) return
@@ -255,15 +356,171 @@ export default function DatasetDetailsPage() {
             <div className="border border-gray-200 rounded-lg bg-white shadow-sm overflow-hidden flex flex-col min-h-[500px]">
               <div className="border-b border-gray-200 bg-white px-5 py-4 flex items-center justify-between">
                 <h3 className="text-sm font-medium text-gray-900">Document Chunks</h3>
-                <Button size="sm" variant="outline" className="h-8 text-xs font-medium">
-                  <Search className="w-3.5 h-3.5 mr-1.5" /> Search Chunks
-                </Button>
+                {chunkStats?.total_chunks > 0 && !showChunkConfig && (
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-2.5 top-2 text-gray-400" />
+                      <Input 
+                        placeholder="Search chunks..." 
+                        className="h-8 pl-8 text-xs w-[200px]"
+                        value={chunkSearch}
+                        onChange={(e) => setChunkSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            setChunkPage(1)
+                            fetchChunks(1, chunkSearch)
+                          }
+                        }}
+                      />
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setShowChunkConfig(true)} className="h-8 text-xs font-medium">
+                      <Settings2 className="w-3.5 h-3.5 mr-1.5" /> Re-Chunk
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleDeleteChunks} className="h-8 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
+                      <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete All
+                    </Button>
+                  </div>
+                )}
               </div>
               
-              {chunkStats?.total_chunks > 0 ? (
-                <div className="flex-1 p-5 bg-slate-50 flex items-center justify-center">
-                  {/* Placeholder for Data Table */}
-                  <span className="text-sm text-gray-500">Data table component will be rendered here.</span>
+              {showChunkConfig ? (
+                <div className="flex-1 p-8 bg-slate-50 flex items-center justify-center">
+                  <div className="bg-white border border-gray-200 rounded-lg shadow-sm w-full max-w-lg overflow-hidden">
+                    <div className="border-b border-gray-100 bg-gray-50 px-5 py-4">
+                      <h4 className="text-sm font-medium text-gray-900">Chunk Generation Configuration</h4>
+                      <p className="text-xs text-gray-500 mt-1">Configure how your document should be split into manageable segments.</p>
+                    </div>
+                    <div className="p-6 space-y-5">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-gray-700">Chunking Strategy</Label>
+                        <Select value={chunkStrategy} onValueChange={(val) => val && setChunkStrategy(val)}>
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue placeholder="Select strategy" />
+                          </SelectTrigger>
+                          <SelectContent alignItemWithTrigger={false} sideOffset={4}>
+                            <SelectItem value="fixed">Fixed Size</SelectItem>
+                            <SelectItem value="recursive">Recursive Character (Recommended)</SelectItem>
+                            <SelectItem value="semantic">Semantic Similarity</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[11px] text-gray-500">Recursive preserves paragraph boundaries. Semantic keeps related concepts together.</p>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-gray-700">Chunk Size (Characters)</Label>
+                          <Input 
+                            type="number" 
+                            className="h-9 text-sm" 
+                            value={chunkSize}
+                            onChange={(e) => setChunkSize(parseInt(e.target.value) || 1000)}
+                            min={100}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-gray-700">Chunk Overlap</Label>
+                          <Input 
+                            type="number" 
+                            className="h-9 text-sm" 
+                            value={chunkOverlap}
+                            onChange={(e) => setChunkOverlap(parseInt(e.target.value) || 200)}
+                            min={0}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="border-t border-gray-100 bg-gray-50 px-5 py-4 flex items-center justify-end gap-2">
+                      <Button variant="ghost" className="h-8 text-xs font-medium" onClick={() => setShowChunkConfig(false)}>Cancel</Button>
+                      <Button 
+                        className="h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium shadow-sm"
+                        disabled={isGeneratingChunks}
+                        onClick={() => handleGenerateChunks(chunkStats?.total_chunks > 0)}
+                      >
+                        {isGeneratingChunks && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                        {chunkStats?.total_chunks > 0 ? "Regenerate Chunks" : "Generate Chunks"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : chunkStats?.total_chunks > 0 ? (
+                <div className="flex-1 flex flex-col">
+                  {isFetchingChunks ? (
+                    <div className="flex-1 flex items-center justify-center">
+                      <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                          <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+                            <tr>
+                              <th className="px-5 py-3 font-medium">Index</th>
+                              <th className="px-5 py-3 font-medium">Preview</th>
+                              <th className="px-5 py-3 font-medium">Tokens</th>
+                              <th className="px-5 py-3 font-medium">Page</th>
+                              <th className="px-5 py-3 font-medium">Strategy</th>
+                              <th className="px-5 py-3 font-medium text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {chunks.length === 0 ? (
+                              <tr>
+                                <td colSpan={6} className="px-5 py-8 text-center text-gray-500 text-sm">
+                                  No chunks found matching your search.
+                                </td>
+                              </tr>
+                            ) : chunks.map((chunk, idx) => (
+                              <tr key={chunk._id || chunk.id || idx} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                <td className="px-5 py-3 font-mono text-xs text-gray-500">{chunk.chunk_index}</td>
+                                <td className="px-5 py-3 text-gray-900 max-w-[300px] truncate">
+                                  {chunk.content.substring(0, 60)}...
+                                </td>
+                                <td className="px-5 py-3 text-gray-600 tabular-nums">{chunk.token_count}</td>
+                                <td className="px-5 py-3 text-gray-600 tabular-nums">{chunk.page_number}</td>
+                                <td className="px-5 py-3">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase bg-slate-100 text-slate-700">
+                                    {chunk.chunk_strategy}
+                                  </span>
+                                </td>
+                                <td className="px-5 py-3 text-right">
+                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => setSelectedChunk(chunk)}>
+                                    <Eye className="w-3.5 h-3.5 mr-1" /> View
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      {/* Pagination Control */}
+                      <div className="mt-auto border-t border-gray-200 px-5 py-3 flex items-center justify-between bg-white">
+                        <span className="text-xs text-gray-500">
+                          Showing page <span className="font-medium text-gray-900">{chunkPage}</span> of <span className="font-medium text-gray-900">{chunkTotalPages}</span>
+                        </span>
+                        <div className="flex gap-1">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-7 px-2 text-xs" 
+                            disabled={chunkPage <= 1}
+                            onClick={() => setChunkPage(p => p - 1)}
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Prev
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-7 px-2 text-xs" 
+                            disabled={chunkPage >= chunkTotalPages}
+                            onClick={() => setChunkPage(p => p + 1)}
+                          >
+                            Next <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
@@ -274,7 +531,7 @@ export default function DatasetDetailsPage() {
                   <p className="text-sm text-gray-500 mb-6 max-w-sm">
                     Partition this document into manageable chunks to prepare it for embedding and semantic search.
                   </p>
-                  <Button className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow-sm">
+                  <Button onClick={() => setShowChunkConfig(true)} className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow-sm">
                     <Plus className="w-4 h-4 mr-1.5" /> Generate Chunks
                   </Button>
                 </div>
@@ -333,6 +590,57 @@ export default function DatasetDetailsPage() {
           </TabsContent>
         </div>
       </Tabs>
+
+      {/* Chunk Viewer Drawer */}
+      {selectedChunk && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex justify-end transition-opacity">
+          <div className="w-[550px] bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <h3 className="text-base font-semibold text-gray-900">Chunk Details</h3>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full hover:bg-gray-100" onClick={() => setSelectedChunk(null)}>
+                <X className="w-4 h-4 text-gray-500" />
+              </Button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                  <div className="text-xs text-gray-500 font-medium mb-1">Chunk Index</div>
+                  <div className="text-sm font-mono text-gray-900">{selectedChunk.chunk_index}</div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                  <div className="text-xs text-gray-500 font-medium mb-1">Page Number</div>
+                  <div className="text-sm font-mono text-gray-900">{selectedChunk.page_number}</div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                  <div className="text-xs text-gray-500 font-medium mb-1">Token Count</div>
+                  <div className="text-sm font-mono text-gray-900">{selectedChunk.token_count}</div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                  <div className="text-xs text-gray-500 font-medium mb-1">Strategy</div>
+                  <div className="text-sm font-medium text-gray-900 capitalize">{selectedChunk.chunk_strategy}</div>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <AlignLeft className="w-4 h-4 text-gray-400" />
+                  <h4 className="text-sm font-medium text-gray-900">Content Preview</h4>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed max-h-[500px] overflow-y-auto">
+                  {selectedChunk.content}
+                </div>
+              </div>
+            </div>
+            
+            <div className="border-t border-gray-100 bg-gray-50 px-6 py-4 flex justify-end">
+              <Button onClick={() => setSelectedChunk(null)} className="h-9 px-4 bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium shadow-sm">
+                Close Viewer
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
