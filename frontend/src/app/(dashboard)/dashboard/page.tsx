@@ -37,7 +37,7 @@ export default function DashboardPage() {
   if (authLoading || isLoading) {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-4rem)]">
-        <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -46,7 +46,7 @@ export default function DashboardPage() {
     <div className="max-w-[1200px] mx-auto space-y-8 pb-10">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Overview</h1>
+          <h1 className="text-xl font-bold text-foreground tracking-tight">Overview</h1>
         </div>
         <div className="flex items-center gap-3">
           <Button onClick={() => router.push("/datasets/new")} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm flex items-center gap-1.5 h-9 px-3">
@@ -64,11 +64,11 @@ export default function DashboardPage() {
         ].map((stat, i) => (
           <Card key={i} className="shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
-              <CardTitle className="text-xs font-medium uppercase tracking-wider text-gray-500">{stat.label}</CardTitle>
-              <stat.icon className="w-4 h-4 text-gray-400" />
+              <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{stat.label}</CardTitle>
+              <stat.icon className="w-4 h-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="px-4 pb-4">
-              <p className="text-3xl font-bold text-gray-900 tracking-tight">{stat.value}</p>
+              <p className="text-3xl font-bold text-foreground tracking-tight">{stat.value}</p>
             </CardContent>
           </Card>
         ))}
@@ -79,33 +79,33 @@ export default function DashboardPage() {
         {/* Recent Datasets Table */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-900">Recent Datasets</h2>
+            <h2 className="text-sm font-semibold text-foreground">Recent Datasets</h2>
             <Button variant="ghost" size="sm" onClick={() => router.push("/datasets")} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium">
               View all <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
           <Card className="shadow-sm overflow-hidden">
             <Table>
-              <TableHeader className="bg-slate-50 border-b border-gray-200">
+              <TableHeader className="bg-muted border-b border-border">
                 <TableRow>
-                  <TableHead className="font-medium text-gray-500">Dataset</TableHead>
-                  <TableHead className="font-medium text-gray-500">Status</TableHead>
-                  <TableHead className="font-medium text-gray-500 text-right">Created</TableHead>
+                  <TableHead className="font-medium text-muted-foreground">Dataset</TableHead>
+                  <TableHead className="font-medium text-muted-foreground">Status</TableHead>
+                  <TableHead className="font-medium text-muted-foreground text-right">Created</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-gray-100">
                 {recentDocs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} className="px-4 py-8 text-center text-gray-500 text-sm">
+                    <TableCell colSpan={3} className="px-4 py-8 text-center text-muted-foreground text-sm">
                       No datasets found. <a href="/datasets/new" className="text-blue-600 hover:underline">Upload your first document.</a>
                     </TableCell>
                   </TableRow>
                 ) : (
                   recentDocs.map((doc) => (
-                    <TableRow key={doc.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => router.push(`/datasets/${doc.id}`)}>
-                      <TableCell className="font-medium text-gray-900">
+                    <TableRow key={doc.id} className="hover:bg-muted transition-colors cursor-pointer" onClick={() => router.push(`/datasets/${doc.id}`)}>
+                      <TableCell className="font-medium text-foreground">
                         <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-gray-400" />
+                          <FileText className="w-4 h-4 text-muted-foreground" />
                           {doc.filename}
                         </div>
                       </TableCell>
@@ -116,10 +116,10 @@ export default function DashboardPage() {
                             doc.processing_status === 'pending' ? 'bg-amber-600' :
                             'bg-green-600'
                           }`}></div>
-                          <span className="text-gray-600 capitalize text-xs">{doc.processing_status}</span>
+                          <span className="text-secondary-foreground capitalize text-xs">{doc.processing_status}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right text-gray-500 text-xs tabular-nums">
+                      <TableCell className="text-right text-muted-foreground text-xs tabular-nums">
                         {new Date(doc.created_at).toLocaleDateString()}
                       </TableCell>
                     </TableRow>
@@ -132,11 +132,11 @@ export default function DashboardPage() {
 
         {/* Processing Jobs / Activity */}
         <div className="space-y-4">
-          <h2 className="text-sm font-semibold text-gray-900">Activity Log</h2>
+          <h2 className="text-sm font-semibold text-foreground">Activity Log</h2>
           <Card className="shadow-sm">
             <CardContent className="p-4">
               {recentDocs.length === 0 ? (
-                <div className="text-center py-8 text-sm text-gray-500">No recent activity.</div>
+                <div className="text-center py-8 text-sm text-muted-foreground">No recent activity.</div>
               ) : (
                 <div className="space-y-4">
                   {recentDocs.map((doc, idx) => (
@@ -147,10 +147,10 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div>
-                        <p className="text-gray-900 leading-tight">
+                        <p className="text-foreground leading-tight">
                           Processed <span className="font-medium">{doc.filename}</span>
                         </p>
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           {new Date(doc.created_at).toLocaleString()}
                         </p>
                       </div>

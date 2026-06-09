@@ -65,11 +65,11 @@ export default function NewDatasetPage() {
   return (
     <div className="max-w-[800px] mx-auto space-y-6 pt-4">
       <div>
-        <h1 className="text-xl font-bold text-gray-900 tracking-tight">Upload Dataset</h1>
-        <p className="text-sm text-gray-500 mt-1">Add a new document to your knowledge base for indexing.</p>
+        <h1 className="text-xl font-bold text-foreground tracking-tight">Upload Dataset</h1>
+        <p className="text-sm text-muted-foreground mt-1">Add a new document to your knowledge base for indexing.</p>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
         
         {error && (
           <div className="m-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-start gap-2 text-sm text-red-700">
@@ -80,7 +80,7 @@ export default function NewDatasetPage() {
 
         <div className="p-6">
           <div 
-            className="border border-dashed border-gray-300 rounded-lg p-12 text-center hover:bg-slate-50 transition-colors cursor-pointer"
+            className="border border-dashed border-gray-300 rounded-lg p-12 text-center hover:bg-muted transition-colors cursor-pointer"
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
@@ -94,26 +94,26 @@ export default function NewDatasetPage() {
             />
             
             <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <UploadCloud className="w-5 h-5 text-gray-500" />
+              <UploadCloud className="w-5 h-5 text-muted-foreground" />
             </div>
             
             {file ? (
               <div className="space-y-1">
-                <p className="text-gray-900 font-medium text-sm flex items-center justify-center gap-1.5">
+                <p className="text-foreground font-medium text-sm flex items-center justify-center gap-1.5">
                   <File className="w-3.5 h-3.5 text-blue-600" /> {file.name}
                 </p>
-                <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
               </div>
             ) : (
               <div className="space-y-1">
-                <p className="text-gray-900 font-medium text-sm">Click to upload or drag and drop</p>
-                <p className="text-xs text-gray-500">Supported files: PDF, DOCX, TXT, CSV up to 10MB</p>
+                <p className="text-foreground font-medium text-sm">Click to upload or drag and drop</p>
+                <p className="text-xs text-muted-foreground">Supported files: PDF, DOCX, TXT, CSV up to 10MB</p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="bg-white px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+        <div className="bg-card px-6 py-4 border-t border-border flex justify-end gap-3">
           <Button 
             variant="ghost"
             onClick={() => router.back()} 

@@ -58,17 +58,17 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] -m-6 sm:-m-8 bg-white overflow-hidden">
+    <div className="flex h-[calc(100vh-3.5rem)] -m-6 sm:-m-8 bg-card overflow-hidden">
       
       {/* 1. Filters Sidebar (240px) */}
-      <div className="w-[240px] border-r border-gray-200 bg-white p-5 hidden md:flex flex-col shrink-0 overflow-y-auto">
-        <div className="flex items-center gap-2 mb-6 text-gray-900 font-semibold text-sm">
+      <div className="w-[240px] border-r border-border bg-card p-5 hidden md:flex flex-col shrink-0 overflow-y-auto">
+        <div className="flex items-center gap-2 mb-6 text-foreground font-semibold text-sm">
           <SlidersHorizontal className="w-3.5 h-3.5" /> Filters
         </div>
 
         <div className="space-y-6">
           <div>
-            <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 block">Search Mode</Label>
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 block">Search Mode</Label>
             <div className="space-y-2 text-sm">
               {['hybrid', 'semantic', 'keyword'].map((mode) => (
                 <label key={mode} className="flex items-center gap-2.5 cursor-pointer group">
@@ -80,7 +80,7 @@ export default function SearchPage() {
                     onChange={(e) => setSearchMode(e.target.value)}
                     className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-600"
                   />
-                  <span className="text-gray-700 capitalize group-hover:text-gray-900 transition-colors">{mode}</span>
+                  <span className="text-secondary-foreground capitalize group-hover:text-foreground transition-colors">{mode}</span>
                 </label>
               ))}
             </div>
@@ -89,17 +89,17 @@ export default function SearchPage() {
       </div>
 
       {/* 2. Main Search & Results Area */}
-      <div className="flex-1 flex flex-col relative border-r border-gray-200 bg-white">
+      <div className="flex-1 flex flex-col relative border-r border-border bg-card">
         {/* Sticky Search Bar */}
-        <div className="p-4 border-b border-gray-200 bg-white z-10">
+        <div className="p-4 border-b border-border bg-card z-10">
           <form onSubmit={handleSearch} className="relative flex items-center">
-            <Search className="absolute left-3 w-4 h-4 text-gray-400 z-10" />
+            <Search className="absolute left-3 w-4 h-4 text-muted-foreground z-10" />
             <Input 
               type="text" 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search across datasets..." 
-              className="w-full pl-9 pr-24 py-2 bg-white h-10 shadow-sm"
+              className="w-full pl-9 pr-24 py-2 bg-card h-10 shadow-sm"
             />
             <Button 
               type="submit"
@@ -113,30 +113,30 @@ export default function SearchPage() {
         </div>
 
         {/* Results List */}
-        <div className="flex-1 overflow-y-auto p-4 bg-white">
+        <div className="flex-1 overflow-y-auto p-4 bg-card">
           {!hasSearched ? (
-            <div className="h-full flex flex-col items-center justify-center text-gray-400">
+            <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
               <Search className="w-8 h-8 mb-3 opacity-20" />
-              <p className="text-sm font-medium text-gray-900 mb-1">Search your knowledge base</p>
+              <p className="text-sm font-medium text-foreground mb-1">Search your knowledge base</p>
               <p className="text-xs text-center">Type a query above to find relevant information.</p>
             </div>
           ) : isSearching ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="animate-pulse bg-white border border-gray-100 rounded-lg p-4 space-y-2">
+                <div key={i} className="animate-pulse bg-card border border-border rounded-lg p-4 space-y-2">
                   <div className="h-3 bg-gray-100 rounded w-1/4"></div>
-                  <div className="h-10 bg-slate-50 rounded w-full"></div>
+                  <div className="h-10 bg-muted rounded w-full"></div>
                 </div>
               ))}
             </div>
           ) : results.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-gray-400">
-              <p className="text-sm font-medium text-gray-900 mb-1">No results found</p>
+            <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+              <p className="text-sm font-medium text-foreground mb-1">No results found</p>
               <p className="text-xs">Try adjusting your search terms or filters.</p>
             </div>
           ) : (
             <div className="space-y-3 pb-20">
-              <p className="text-xs text-gray-500 font-medium mb-4 px-1">{results.length} results found</p>
+              <p className="text-xs text-muted-foreground font-medium mb-4 px-1">{results.length} results found</p>
               {results.map((result, idx) => (
                 <div 
                   key={idx} 
@@ -144,19 +144,19 @@ export default function SearchPage() {
                   className={`p-4 rounded-lg border transition-all cursor-pointer text-sm ${
                     selectedResult?.id === result.id 
                       ? 'border-blue-500 bg-blue-50 shadow-sm ring-1 ring-blue-500' 
-                      : 'border-gray-200 bg-white hover:border-gray-300 shadow-sm'
+                      : 'border-border bg-card hover:border-gray-300 shadow-sm'
                   }`}
                 >
                   <div className="flex items-start justify-between mb-1.5">
-                    <div className="flex items-center gap-1.5 font-medium text-gray-600">
-                      <FileText className="w-3.5 h-3.5 text-gray-400" />
+                    <div className="flex items-center gap-1.5 font-medium text-secondary-foreground">
+                      <FileText className="w-3.5 h-3.5 text-muted-foreground" />
                       {result.metadata?.document_id?.slice(0,8) || "Unknown Dataset"}
                     </div>
-                    <span className="text-[10px] font-mono bg-white text-gray-600 px-1.5 py-0.5 rounded border border-gray-200">
+                    <span className="text-[10px] font-mono bg-card text-secondary-foreground px-1.5 py-0.5 rounded border border-border">
                       {(result.hybrid_score || result.score || 0).toFixed(3)}
                     </span>
                   </div>
-                  <p className="text-gray-800 leading-relaxed line-clamp-2">
+                  <p className="text-foreground leading-relaxed line-clamp-2">
                     {result.content}
                   </p>
                 </div>
@@ -167,30 +167,30 @@ export default function SearchPage() {
       </div>
 
       {/* 3. Metadata Panel (320px) */}
-      <div className={`w-[320px] bg-white flex flex-col shrink-0 overflow-y-auto transition-transform ${selectedResult ? 'block' : 'hidden xl:block opacity-30 pointer-events-none'}`}>
-        <div className="p-4 border-b border-gray-200 bg-white">
-          <h3 className="font-semibold text-gray-900 text-sm">Result Details</h3>
+      <div className={`w-[320px] bg-card flex flex-col shrink-0 overflow-y-auto transition-transform ${selectedResult ? 'block' : 'hidden xl:block opacity-30 pointer-events-none'}`}>
+        <div className="p-4 border-b border-border bg-card">
+          <h3 className="font-semibold text-foreground text-sm">Result Details</h3>
         </div>
         
         {selectedResult ? (
           <div className="p-5 space-y-6">
             <div>
-              <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Source Text</Label>
-              <div className="bg-slate-50 p-3 rounded border border-gray-200 text-xs text-gray-800 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Source Text</Label>
+              <div className="bg-muted p-3 rounded border border-border text-xs text-foreground whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
                 {selectedResult.content}
               </div>
             </div>
 
             <div>
-              <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Metadata</Label>
-              <div className="bg-white p-3 rounded border border-gray-200 text-xs space-y-2 shadow-sm">
-                <div className="flex justify-between border-b border-gray-100 pb-2">
-                  <span className="text-gray-500">Document ID</span>
-                  <span className="font-mono text-gray-900">{selectedResult.metadata?.document_id?.slice(0,8) || "N/A"}</span>
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Metadata</Label>
+              <div className="bg-card p-3 rounded border border-border text-xs space-y-2 shadow-sm">
+                <div className="flex justify-between border-b border-border pb-2">
+                  <span className="text-muted-foreground">Document ID</span>
+                  <span className="font-mono text-foreground">{selectedResult.metadata?.document_id?.slice(0,8) || "N/A"}</span>
                 </div>
                 <div className="flex justify-between pt-1">
-                  <span className="text-gray-500">Chunk Index</span>
-                  <span className="text-gray-900 font-medium">{selectedResult.metadata?.chunk_index ?? "N/A"}</span>
+                  <span className="text-muted-foreground">Chunk Index</span>
+                  <span className="text-foreground font-medium">{selectedResult.metadata?.chunk_index ?? "N/A"}</span>
                 </div>
               </div>
             </div>
@@ -200,7 +200,7 @@ export default function SearchPage() {
             </Button>
           </div>
         ) : (
-          <div className="p-5 text-center text-sm text-gray-400 mt-10">
+          <div className="p-5 text-center text-sm text-muted-foreground mt-10">
             Select a result to view details
           </div>
         )}

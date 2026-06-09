@@ -69,19 +69,19 @@ export default function DatasetsPage() {
     <div className="max-w-[1200px] mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Datasets</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage your knowledge base documents.</p>
+          <h1 className="text-xl font-bold text-foreground tracking-tight">Datasets</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage your knowledge base documents.</p>
         </div>
         <Button onClick={() => router.push("/datasets/new")} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm flex items-center gap-1.5">
           <Plus className="w-4 h-4" /> New Dataset
         </Button>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col">
+      <div className="bg-card border border-border rounded-lg shadow-sm flex flex-col">
         {/* Table Controls */}
-        <div className="p-2 border-b border-gray-200 flex items-center justify-between bg-white rounded-t-lg">
+        <div className="p-2 border-b border-border flex items-center justify-between bg-card rounded-t-lg">
           <div className="relative w-64">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
               type="text" 
               placeholder="Search..." 
@@ -97,13 +97,13 @@ export default function DatasetsPage() {
         {/* Table Content */}
         {isLoading ? (
           <div className="flex justify-center items-center py-24">
-            <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           </div>
         ) : datasets.length === 0 ? (
           <div className="text-center py-24 px-4">
             <FileText className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-            <h3 className="text-sm font-medium text-gray-900 mb-1">No datasets yet</h3>
-            <p className="text-gray-500 text-sm mb-4">Upload your first document to begin building your knowledge base.</p>
+            <h3 className="text-sm font-medium text-foreground mb-1">No datasets yet</h3>
+            <p className="text-muted-foreground text-sm mb-4">Upload your first document to begin building your knowledge base.</p>
             <Button variant="link" onClick={() => router.push("/datasets/new")} className="text-blue-600 font-medium">
               Upload Document &rarr;
             </Button>
@@ -111,9 +111,9 @@ export default function DatasetsPage() {
         ) : (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-white text-gray-500">
+              <TableHeader className="bg-card text-muted-foreground">
                 <TableRow>
-                  <TableHead className="font-medium text-xs cursor-pointer group hover:bg-slate-50 w-full">
+                  <TableHead className="font-medium text-xs cursor-pointer group hover:bg-muted w-full">
                     <div className="flex items-center">Name <ArrowUpDown className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100" /></div>
                   </TableHead>
                   <TableHead className="font-medium text-xs">Status</TableHead>
@@ -128,10 +128,10 @@ export default function DatasetsPage() {
                   <TableRow 
                     key={dataset.id} 
                     onClick={() => router.push(`/datasets/${dataset.id}`)}
-                    className="hover:bg-slate-50 transition-colors cursor-pointer group"
+                    className="hover:bg-muted transition-colors cursor-pointer group"
                   >
-                    <TableCell className="font-medium text-gray-900 flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-gray-400 shrink-0" />
+                    <TableCell className="font-medium text-foreground flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
                       <span className="truncate max-w-sm">{dataset.filename}</span>
                     </TableCell>
                     <TableCell>
@@ -141,18 +141,18 @@ export default function DatasetsPage() {
                           dataset.processing_status === 'pending' ? 'bg-amber-600' :
                           'bg-green-600'
                         }`}></div>
-                        <span className="text-gray-600 capitalize text-xs">{dataset.processing_status}</span>
+                        <span className="text-secondary-foreground capitalize text-xs">{dataset.processing_status}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-gray-500 text-xs tabular-nums">{formatSize(dataset.file_size)}</TableCell>
-                    <TableCell className="text-gray-500 text-xs uppercase">{dataset.file_type}</TableCell>
-                    <TableCell className="text-gray-500 text-xs tabular-nums">{new Date(dataset.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs tabular-nums">{formatSize(dataset.file_size)}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs uppercase">{dataset.file_type}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs tabular-nums">{new Date(dataset.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <Button 
                         variant="ghost" 
                         size="icon"
                         onClick={(e) => handleDelete(e, dataset.id)}
-                        className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -163,7 +163,7 @@ export default function DatasetsPage() {
             </Table>
           </div>
         )}
-        <div className="p-2 border-t border-gray-200 bg-white rounded-b-lg flex items-center justify-between text-xs text-gray-500">
+        <div className="p-2 border-t border-border bg-card rounded-b-lg flex items-center justify-between text-xs text-muted-foreground">
           <span className="px-2">{datasets.length} datasets</span>
         </div>
       </div>
