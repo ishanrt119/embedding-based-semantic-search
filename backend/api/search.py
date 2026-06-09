@@ -16,14 +16,13 @@ class SearchQuery(BaseModel):
     top_k: int = 5
     search_type: str = "hybrid" # 'semantic', 'keyword', 'hybrid'
 
-async def get_mock_user_id():
-    user = await UserRepository.get_first_user()
-    if not user:
-        user = await UserRepository.create_user(email="test@example.com", password_hash="dummy")
-    return user["id"]
+from api.auth import get_current_user
+
+async def get_current_user_id(current_user: dict = Depends(get_current_user)):
+    return current_user["id"]
 
 @router.post("/")
-async def search(query: SearchQuery, user_id: str = Depends(get_mock_user_id)):
+async def search(query: SearchQuery, user_id: str = Depends(get_current_user_id)):
     start_time = time.time()
     
     # 1. Semantic Search (Vector)
@@ -85,3 +84,12 @@ async def search(query: SearchQuery, user_id: str = Depends(get_mock_user_id)):
     latency = (time.time() - start_time) * 1000
     await SearchRepository.log_search(user_id, query.query, query.search_type, len(hybrid_results), latency)
     return {"results": hybrid_results, "type": "hybrid"}
+
+@router.get("/history")
+async def get_search_history(user_id: str = Depends(get_current_user_id), limit: int = 20):
+    cursor = SearchRepository.get_collection().find({"user_id": user_id}).sort("created_at", -1).limit(limit)
+    history = await cursor.to_list(length=limit)
+    for h in history:
+        if "_id" in h:
+            h["_id"] = str(h["_id"])
+    return history

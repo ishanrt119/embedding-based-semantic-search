@@ -15,12 +15,10 @@ router = APIRouter()
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# Mock dependency for getting current user (should use JWT token logic)
-async def get_current_user_id():
-    user = await UserRepository.get_first_user()
-    if not user:
-        user = await UserRepository.create_user(email="test@example.com", password_hash="dummy")
-    return user["id"]
+from api.auth import get_current_user
+
+async def get_current_user_id(current_user: dict = Depends(get_current_user)):
+    return current_user["id"]
 
 @router.post("/upload")
 async def upload_document(
@@ -30,8 +28,9 @@ async def upload_document(
 ):
     logger.info(f"Upload start for user {user_id}: {file.filename}")
     
-    file_ext = file.filename.split('.')[-1].upper() if '.' in file.filename else ""
-    mime_type, _ = mimetypes.guess_type(file.filename)
+    # Sanitize original filename to prevent path traversal
+    safe_original_filename = os.path.basename(file.filename)
+    file_ext = safe_original_filename.split('.')[-1].upper() if '.' in safe_original_filename else ""
     
     if file_ext not in SUPPORTED_TYPES:
         logger.error(f"Upload failure: Unsupported file type {file_ext}")
@@ -41,7 +40,9 @@ async def upload_document(
     user_dir = os.path.join(UPLOAD_DIR, user_id, document_id)
     os.makedirs(user_dir, exist_ok=True)
     
-    file_path = os.path.join(user_dir, file.filename)
+    # Secure UUID-based filename
+    stored_filename = f"{uuid.uuid4()}.{file_ext.lower()}"
+    file_path = os.path.join(user_dir, stored_filename)
     
     try:
         size = 0
@@ -62,8 +63,8 @@ async def upload_document(
             document_data={
                 "id": document_id,
                 "user_id": user_id,
-                "filename": file.filename,
-                "original_filename": file.filename,
+                "filename": safe_original_filename,
+                "original_filename": safe_original_filename,
                 "file_type": file_ext,
                 "file_size": size,
                 "storage_path": file_path,
