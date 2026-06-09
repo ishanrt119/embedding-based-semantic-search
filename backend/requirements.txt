@@ -2,7 +2,7 @@ fastapi
 uvicorn
 pydantic
 pydantic-settings
-prisma
+motor
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart

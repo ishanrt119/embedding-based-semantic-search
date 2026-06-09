@@ -1,12 +1,14 @@
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, BackgroundTasks, Query
 from typing import List, Optional
-from database.client import db
 import shutil
 import os
 import uuid
 import mimetypes
 from services.logger import logger
 from services.document_processor import process_document, validate_file, SUPPORTED_TYPES, MAX_FILE_SIZE
+from database.repositories.user_repository import UserRepository
+from database.repositories.document_repository import DocumentRepository
+from database.repositories.chunk_repository import ChunkRepository
 
 router = APIRouter()
 
@@ -15,13 +17,10 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Mock dependency for getting current user (should use JWT token logic)
 async def get_current_user_id():
-    # In a real app, this parses the JWT token
-    # For now, we assume a mock user ID or fetch the first user
-    user = await db.user.find_first()
+    user = await UserRepository.get_first_user()
     if not user:
-        # Create a dummy user for testing if none exists
-        user = await db.user.create(data={"email": "test@example.com", "password": "dummy"})
-    return user.id
+        user = await UserRepository.create_user(email="test@example.com", password_hash="dummy")
+    return user["id"]
 
 @router.post("/upload")
 async def upload_document(
@@ -38,11 +37,6 @@ async def upload_document(
         logger.error(f"Upload failure: Unsupported file type {file_ext}")
         raise HTTPException(status_code=400, detail="Unsupported file type")
         
-    # Read to check file size (can't just use os.path.getsize yet as it's not saved)
-    # A cleaner way is reading chunks but for simplicity we'll check it before saving or during save
-    # Let's save it first and check, or we can check header `content-length` but it can be spoofed.
-    # We will read into memory or save to a temp path, let's just save it to its final path.
-    
     document_id = str(uuid.uuid4())
     user_dir = os.path.join(UPLOAD_DIR, user_id, document_id)
     os.makedirs(user_dir, exist_ok=True)
@@ -64,8 +58,8 @@ async def upload_document(
             raise HTTPException(status_code=400, detail="File size exceeds maximum allowed size of 25 MB")
             
         # Create DB record
-        document = await db.document.create(
-            data={
+        document = await DocumentRepository.create_document(
+            document_data={
                 "id": document_id,
                 "user_id": user_id,
                 "filename": file.filename,
@@ -83,10 +77,10 @@ async def upload_document(
         background_tasks.add_task(process_document, document_id, file_path, file_ext)
         
         return {
-            "document_id": document.id,
-            "filename": document.filename,
-            "file_type": document.file_type,
-            "status": document.upload_status
+            "document_id": document["id"],
+            "filename": document["filename"],
+            "file_type": document["file_type"],
+            "status": document["upload_status"]
         }
     except HTTPException:
         raise
@@ -103,13 +97,12 @@ async def get_documents(
     user_id: str = Depends(get_current_user_id)
 ):
     skip = (page - 1) * limit
-    total = await db.document.count(where={"user_id": user_id})
-    documents = await db.document.find_many(
-        where={"user_id": user_id},
-        skip=skip,
-        take=limit,
-        order={"created_at": "desc"}
-    )
+    total = await DocumentRepository.count_documents_by_user(user_id)
+    documents = await DocumentRepository.get_documents_by_user(user_id, skip=skip, limit=limit)
+    
+    for doc in documents:
+        if "_id" in doc:
+            doc["_id"] = str(doc["_id"])
     
     return {
         "data": documents,
@@ -123,28 +116,32 @@ async def get_documents(
 
 @router.get("/{document_id}")
 async def get_document(document_id: str, user_id: str = Depends(get_current_user_id)):
-    document = await db.document.find_unique(where={"id": document_id})
-    if not document or document.user_id != user_id:
+    document = await DocumentRepository.get_document_by_id(document_id)
+    if not document or document.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Document not found")
+    if "_id" in document:
+        document["_id"] = str(document["_id"])
     return document
 
 @router.delete("/{document_id}")
 async def delete_document(document_id: str, user_id: str = Depends(get_current_user_id)):
-    document = await db.document.find_unique(where={"id": document_id})
-    if not document or document.user_id != user_id:
+    document = await DocumentRepository.get_document_by_id(document_id)
+    if not document or document.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Document not found")
         
     # Delete from DB
-    await db.document.delete(where={"id": document_id})
+    await DocumentRepository.delete_document(document_id)
     
     # Delete file
-    if document.storage_path and os.path.exists(document.storage_path):
-        os.remove(document.storage_path)
+    storage_path = document.get("storage_path")
+    if storage_path and os.path.exists(storage_path):
+        os.remove(storage_path)
         
     # Delete document directory if empty
-    doc_dir = os.path.dirname(document.storage_path)
-    if os.path.exists(doc_dir) and not os.listdir(doc_dir):
-        shutil.rmtree(doc_dir)
+    if storage_path:
+        doc_dir = os.path.dirname(storage_path)
+        if os.path.exists(doc_dir) and not os.listdir(doc_dir):
+            shutil.rmtree(doc_dir)
         
     return {"message": "Document deleted successfully"}
 
@@ -160,8 +157,8 @@ from services.chunking_service import create_chunks, delete_chunks as delete_doc
 @router.post("/{document_id}/chunk")
 async def process_chunking(document_id: str, request: ChunkRequest, user_id: str = Depends(get_current_user_id)):
     # Verify document ownership
-    document = await db.document.find_unique(where={"id": document_id})
-    if not document or document.user_id != user_id:
+    document = await DocumentRepository.get_document_by_id(document_id)
+    if not document or document.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Document not found")
         
     try:
@@ -184,18 +181,17 @@ async def get_document_chunks(
     limit: int = Query(10, ge=1, le=100),
     user_id: str = Depends(get_current_user_id)
 ):
-    document = await db.document.find_unique(where={"id": document_id})
-    if not document or document.user_id != user_id:
+    document = await DocumentRepository.get_document_by_id(document_id)
+    if not document or document.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Document not found")
         
     skip = (page - 1) * limit
-    total = await db.chunk.count(where={"document_id": document_id})
-    chunks = await db.chunk.find_many(
-        where={"document_id": document_id},
-        skip=skip,
-        take=limit,
-        order={"chunk_index": "asc"}
-    )
+    total = await ChunkRepository.count_chunks_by_document(document_id)
+    chunks = await ChunkRepository.get_chunks_by_document(document_id, skip=skip, limit=limit)
+    
+    for chunk in chunks:
+        if "_id" in chunk:
+            chunk["_id"] = str(chunk["_id"])
     
     return {
         "data": chunks,
@@ -209,8 +205,8 @@ async def get_document_chunks(
 
 @router.delete("/{document_id}/chunks")
 async def delete_all_chunks(document_id: str, user_id: str = Depends(get_current_user_id)):
-    document = await db.document.find_unique(where={"id": document_id})
-    if not document or document.user_id != user_id:
+    document = await DocumentRepository.get_document_by_id(document_id)
+    if not document or document.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Document not found")
         
     await delete_document_chunks(document_id)
@@ -218,8 +214,8 @@ async def delete_all_chunks(document_id: str, user_id: str = Depends(get_current
 
 @router.get("/{document_id}/chunk-stats")
 async def get_document_chunk_stats(document_id: str, user_id: str = Depends(get_current_user_id)):
-    document = await db.document.find_unique(where={"id": document_id})
-    if not document or document.user_id != user_id:
+    document = await DocumentRepository.get_document_by_id(document_id)
+    if not document or document.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Document not found")
         
     stats = await get_chunk_statistics(document_id)

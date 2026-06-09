@@ -5,6 +5,8 @@ from embeddings.generator import generate_embedding
 from vectorstore.faiss_store import faiss_store
 import os
 
+from database.repositories.chunk_repository import ChunkRepository
+
 # Optional: Using Groq for the RAG LLM
 try:
     from groq import Groq
@@ -25,7 +27,19 @@ async def rag_chat(query: RAGQuery):
     query_emb = generate_embedding(query.query)
     retrieved_chunks = faiss_store.search(query_emb, top_k=3)
     
-    context_text = "\n\n".join([f"Source (Page {c.get('page_num', '?')}): {c.get('content', '')}" for c in retrieved_chunks])
+    enriched_chunks = []
+    for c in retrieved_chunks:
+        chunk_id = c.get("id")
+        if chunk_id:
+            chunk_meta = await ChunkRepository.get_chunk_by_id(chunk_id)
+            if chunk_meta:
+                if "_id" in chunk_meta:
+                    chunk_meta["_id"] = str(chunk_meta["_id"])
+                c.update({"metadata": chunk_meta})
+                c["content"] = chunk_meta.get("chunk_text", c.get("content", ""))
+        enriched_chunks.append(c)
+    
+    context_text = "\n\n".join([f"Source (Page {c.get('metadata', {}).get('page_number', '?')}): {c.get('content', '')}" for c in enriched_chunks])
     
     if not context_text:
         context_text = "No relevant context found."

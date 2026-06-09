@@ -1,17 +1,13 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: semantic_search_db
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: semantic_search
+  mongo:
+    image: mongo:latest
+    container_name: semantic_search_mongo
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mongo_data:/data/db
     restart: always
 
   chromadb:
@@ -24,5 +20,5 @@ services:
     restart: always
 
 volumes:
-  postgres_data:
+  mongo_data:
   chroma_data:

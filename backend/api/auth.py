@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
-from database.client import db
+from database.repositories.user_repository import UserRepository
 import os
 
 router = APIRouter()
@@ -38,33 +38,31 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
 @router.post("/signup", response_model=Token)
 async def signup(user: UserCreate):
-    existing_user = await db.user.find_unique(where={"email": user.email})
+    existing_user = await UserRepository.get_user_by_email(user.email)
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
     hashed_password = pwd_context.hash(user.password)
     
-    new_user = await db.user.create(
-        data={
-            "email": user.email,
-            "password": hashed_password
-        }
+    new_user = await UserRepository.create_user(
+        email=user.email,
+        password_hash=hashed_password
     )
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": new_user.email}, expires_delta=access_token_expires
+        data={"sub": new_user["email"]}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/login", response_model=Token)
 async def login(user: UserLogin):
-    db_user = await db.user.find_unique(where={"email": user.email})
-    if not db_user or not pwd_context.verify(user.password, db_user.password):
+    db_user = await UserRepository.get_user_by_email(user.email)
+    if not db_user or not pwd_context.verify(user.password, db_user["password"]):
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": db_user.email}, expires_delta=access_token_expires
+        data={"sub": db_user["email"]}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}

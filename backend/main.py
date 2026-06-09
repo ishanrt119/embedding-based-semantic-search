@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database.client import db
+from database.mongodb import db_client
 
 app = FastAPI(
     title="AI Semantic Search & RAG Platform",
@@ -19,11 +19,11 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    await db.connect()
+    await db_client.connect()
 
 @app.on_event("shutdown")
 async def shutdown():
-    await db.disconnect()
+    await db_client.disconnect()
 
 @app.get("/")
 def read_root():

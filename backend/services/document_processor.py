@@ -75,12 +75,12 @@ def extract_metadata(file_path: str, file_type: str, extracted_text: str) -> Dic
 
 async def process_document(document_id: str, file_path: str, file_type: str):
     """Main processing pipeline to extract text, generate metadata, and update status."""
-    from database.client import db  # Lazy import to avoid circular dependency
+    from database.repositories.document_repository import DocumentRepository
     
     try:
         logger.info(f"Starting processing for document: {document_id}")
-        await db.document.update(
-            where={"id": document_id},
+        await DocumentRepository.update_document(
+            document_id=document_id,
             data={"processing_status": "extracting"}
         )
         
@@ -89,8 +89,8 @@ async def process_document(document_id: str, file_path: str, file_type: str):
         if not extracted_text.strip():
             raise ValueError("Extracted text is empty.")
             
-        await db.document.update(
-            where={"id": document_id},
+        await DocumentRepository.update_document(
+            document_id=document_id,
             data={"processing_status": "extracted"}
         )
         
@@ -98,10 +98,10 @@ async def process_document(document_id: str, file_path: str, file_type: str):
         metadata = extract_metadata(file_path, file_type, extracted_text)
         
         # 3. Update Status
-        await db.document.update(
-            where={"id": document_id},
+        await DocumentRepository.update_document(
+            document_id=document_id,
             data={
-                "processing_status": "indexed", # For this module, we end at indexed/completed or just 'extracted' depending on if we do chunking here
+                "processing_status": "indexed", 
                 "upload_status": "completed",
                 "file_size": metadata["file_size"],
                 "total_pages": metadata.get("total_pages"),
@@ -112,8 +112,8 @@ async def process_document(document_id: str, file_path: str, file_type: str):
         
     except Exception as e:
         logger.error(f"Processing failed for document {document_id}: {str(e)}")
-        await db.document.update(
-            where={"id": document_id},
+        await DocumentRepository.update_document(
+            document_id=document_id,
             data={
                 "processing_status": "pending",
                 "upload_status": "failed"
