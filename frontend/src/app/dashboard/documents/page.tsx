@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Eye, Trash2, FileText, ChevronLeft, ChevronRight, Blocks } from "lucide-react"
+import { Eye, Trash2, FileText, ChevronLeft, ChevronRight, Blocks, Database } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter } from "next/navigation"
@@ -157,6 +157,13 @@ export default function DocumentsDashboard() {
                           title="View Chunks"
                         >
                           <Blocks className="w-5 h-5" />
+                        </button>
+                        <button
+                          className="text-emerald-600 hover:text-emerald-900"
+                          onClick={() => router.push(`/dashboard/documents/${doc.id}/embeddings`)}
+                          title="Manage Embeddings"
+                        >
+                          <Database className="w-5 h-5" />
                         </button>
                         <button
                           className="text-red-600 hover:text-red-900"

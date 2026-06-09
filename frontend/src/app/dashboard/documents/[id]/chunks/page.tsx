@@ -2,43 +2,79 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ChevronLeft, FileText, BarChart3, Settings2, Loader2, Play } from "lucide-react"
+import { ChevronLeft, ChevronRight, Trash2, RefreshCw, ArrowLeft, Search, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-export default function ChunkVisualizationPage() {
-  const { id } = useParams()
-  const router = useRouter()
-  const [document, setDocument] = useState<any>(null)
-  const [chunks, setChunks] = useState<any[]>([])
-  const [stats, setStats] = useState<any>(null)
-  
-  const [isLoading, setIsLoading] = useState(true)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  
-  // Form State
-  const [strategy, setStrategy] = useState("recursive")
-  const [chunkSize, setChunkSize] = useState(1000)
-  const [overlap, setOverlap] = useState(200)
+interface Document {
+  id: string
+  filename: string
+  processing_status: string
+}
 
-  const fetchData = async () => {
+interface ChunkStats {
+  total_chunks: number
+  avg_tokens: number
+  avg_characters: number
+  largest_chunk: number
+  smallest_chunk: number
+}
+
+interface Chunk {
+  _id: string
+  chunk_index: number
+  content: string
+  page_number: number
+  token_count: number
+  chunk_strategy: string
+  chunk_size: number
+  chunk_overlap: number
+}
+
+interface Pagination {
+  total: number
+  page: number
+  limit: number
+  total_pages: number
+}
+
+export default function ChunksDashboard() {
+  const { id } = useParams() as { id: string }
+  const router = useRouter()
+  
+  const [document, setDocument] = useState<Document | null>(null)
+  const [stats, setStats] = useState<ChunkStats | null>(null)
+  const [chunks, setChunks] = useState<Chunk[]>([])
+  const [pagination, setPagination] = useState<Pagination | null>(null)
+  const [page, setPage] = useState(1)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  
+  // Rechunk state
+  const [isRechunking, setIsRechunking] = useState(false)
+  const [rechunkStrategy, setRechunkStrategy] = useState("recursive")
+  const [rechunkSize, setRechunkSize] = useState(1000)
+  const [rechunkOverlap, setRechunkOverlap] = useState(200)
+
+  const fetchData = async (pageNum: number) => {
     setIsLoading(true)
     setError(null)
     try {
       const docRes = await fetch(`http://localhost:8000/api/documents/${id}`)
-      if (!docRes.ok) throw new Error("Failed to fetch document")
+      if (!docRes.ok) throw new Error("Failed to fetch document details")
       setDocument(await docRes.json())
 
       const statsRes = await fetch(`http://localhost:8000/api/documents/${id}/chunk-stats`)
-      if (statsRes.ok) setStats(await statsRes.json())
-
-      // For simplicity in this visualization, fetch first 100 chunks
-      const chunksRes = await fetch(`http://localhost:8000/api/documents/${id}/chunks?limit=100`)
-      if (chunksRes.ok) {
-        const chunksData = await chunksRes.json()
-        setChunks(chunksData.data)
+      if (statsRes.ok) {
+        setStats(await statsRes.json())
       }
+
+      const chunksRes = await fetch(`http://localhost:8000/api/documents/${id}/chunks?page=${pageNum}&limit=10`)
+      if (!chunksRes.ok) throw new Error("Failed to fetch chunks")
+      const chunksData = await chunksRes.json()
+      setChunks(chunksData.data)
+      setPagination(chunksData.pagination)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -47,50 +83,62 @@ export default function ChunkVisualizationPage() {
   }
 
   useEffect(() => {
-    if (id) fetchData()
-  }, [id])
+    fetchData(page)
+  }, [id, page])
 
-  const handleProcess = async () => {
-    setIsProcessing(true)
-    setError(null)
+  const handleDeleteAll = async () => {
+    if (!confirm("Are you sure you want to delete all chunks? This will reset document status.")) return
     try {
-      const res = await fetch(`http://localhost:8000/api/documents/${id}/chunk`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ strategy, chunk_size: chunkSize, overlap })
-      })
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.detail || "Failed to process chunks")
-      }
-      await fetchData()
+      const res = await fetch(`http://localhost:8000/api/documents/${id}/chunks`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Failed to delete chunks")
+      fetchData(1)
     } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setIsProcessing(false)
+      alert(err.message)
     }
   }
 
-  if (isLoading) {
-    return <div className="p-8 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600" /></div>
+  const handleRechunk = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!confirm("Are you sure you want to rechunk? All existing chunks will be deleted.")) return
+    
+    setIsRechunking(true)
+    try {
+      const res = await fetch(`http://localhost:8000/api/documents/${id}/rechunk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          strategy: rechunkStrategy,
+          chunk_size: rechunkSize,
+          chunk_overlap: rechunkOverlap
+        })
+      })
+      if (!res.ok) {
+        const errData = await res.json()
+        throw new Error(errData.detail || "Failed to rechunk")
+      }
+      alert("Rechunking successful!")
+      fetchData(1)
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setIsRechunking(false)
+    }
   }
 
+  const filteredChunks = chunks.filter(c => 
+    c.content && c.content.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   return (
-    <div className="container mx-auto p-8 max-w-6xl">
+    <div className="container mx-auto p-8 max-w-7xl">
       <div className="flex items-center mb-6">
-        <Button variant="ghost" className="mr-4" onClick={() => router.push("/dashboard/documents")}>
-          <ChevronLeft className="w-5 h-5 mr-1" />
-          Back
+        <Button variant="ghost" onClick={() => router.push("/dashboard/documents")} className="mr-4">
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Button>
-        <div>
-          <h1 className="text-3xl font-bold flex items-center">
-            <FileText className="w-8 h-8 mr-3 text-indigo-600" />
-            Advanced Chunking Engine
-          </h1>
-          <p className="text-gray-500 mt-1">
-            {document?.filename} &middot; {document?.file_type} &middot; {document?.file_size} bytes
-          </p>
-        </div>
+        <h1 className="text-3xl font-bold flex-1 flex items-center">
+          <FileText className="w-8 h-8 mr-3 text-indigo-600" />
+          Chunk Management
+        </h1>
       </div>
 
       {error && (
@@ -100,155 +148,181 @@ export default function ChunkVisualizationPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {/* Configuration Panel */}
-        <Card className="col-span-1 border-indigo-100 shadow-sm">
-          <CardHeader className="bg-indigo-50/50 pb-4 border-b border-indigo-50 rounded-t-xl">
-            <CardTitle className="text-lg flex items-center text-indigo-900">
-              <Settings2 className="w-5 h-5 mr-2" />
-              Chunking Strategy
-            </CardTitle>
-            <CardDescription>Configure how the document is segmented.</CardDescription>
+        <Card>
+          <CardHeader>
+            <CardTitle>Document Details</CardTitle>
           </CardHeader>
-          <CardContent className="pt-6 space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Strategy</label>
-              <select 
-                className="w-full border-gray-300 rounded-md shadow-sm p-2.5 border focus:ring-indigo-500 focus:border-indigo-500"
-                value={strategy}
-                onChange={(e) => setStrategy(e.target.value)}
-              >
-                <option value="fixed">Fixed Length Chunking</option>
-                <option value="recursive">Recursive Chunking (LangChain)</option>
-                <option value="semantic">Semantic Chunking (ML-based)</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
-                <span>Max Chunk Size</span>
-                <span className="text-indigo-600 font-semibold">{chunkSize}</span>
-              </label>
-              <input 
-                type="range" min="300" max="3000" step="50"
-                className="w-full accent-indigo-600"
-                value={chunkSize}
-                onChange={(e) => setChunkSize(parseInt(e.target.value))}
-              />
-              <div className="flex justify-between text-xs text-gray-400 mt-1">
-                <span>300</span><span>3000</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
-                <span>Overlap</span>
-                <span className="text-indigo-600 font-semibold">{overlap}</span>
-              </label>
-              <input 
-                type="range" min="0" max="500" step="10"
-                className="w-full accent-indigo-600"
-                value={overlap}
-                onChange={(e) => setOverlap(parseInt(e.target.value))}
-              />
-              <div className="flex justify-between text-xs text-gray-400 mt-1">
-                <span>0</span><span>500</span>
-              </div>
-            </div>
-
-            <Button 
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white" 
-              onClick={handleProcess}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing Engine...</>
-              ) : (
-                <><Play className="w-4 h-4 mr-2" /> Generate Chunks</>
-              )}
-            </Button>
+          <CardContent>
+            {document ? (
+              <dl className="space-y-2 text-sm">
+                <div className="flex justify-between"><dt className="text-gray-500">Filename</dt><dd className="font-medium truncate pl-4" title={document.filename}>{document.filename}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-500">Status</dt><dd className="font-medium capitalize text-indigo-600">{document.processing_status}</dd></div>
+              </dl>
+            ) : <p className="text-sm text-gray-500">Loading...</p>}
           </CardContent>
         </Card>
 
-        {/* Statistics Dashboard */}
-        <Card className="col-span-2 shadow-sm">
-          <CardHeader className="pb-4 border-b border-gray-100">
-            <CardTitle className="text-lg flex items-center">
-              <BarChart3 className="w-5 h-5 mr-2 text-indigo-600" />
-              Chunk Quality Metrics
-            </CardTitle>
+        <Card>
+          <CardHeader>
+            <CardTitle>Chunk Statistics</CardTitle>
           </CardHeader>
-          <CardContent className="pt-6">
-            {!stats || stats.total_chunks === 0 ? (
-              <div className="text-center text-gray-500 py-10">
-                No chunks generated yet. Run the chunking engine to see statistics.
+          <CardContent>
+            {stats ? (
+              <dl className="space-y-2 text-sm">
+                <div className="flex justify-between"><dt className="text-gray-500">Total Chunks</dt><dd className="font-medium">{stats.total_chunks}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-500">Avg Tokens/Chunk</dt><dd className="font-medium">{stats.avg_tokens}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-500">Avg Chars/Chunk</dt><dd className="font-medium">{stats.avg_characters}</dd></div>
+              </dl>
+            ) : <p className="text-sm text-gray-500">Loading...</p>}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Rechunk Document</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleRechunk} className="space-y-3">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Strategy</label>
+                  <select 
+                    value={rechunkStrategy} 
+                    onChange={e => setRechunkStrategy(e.target.value)}
+                    className="w-full rounded-md border border-gray-300 py-1.5 px-2 text-sm"
+                  >
+                    <option value="fixed">Fixed</option>
+                    <option value="recursive">Recursive</option>
+                    <option value="semantic">Semantic</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Size</label>
+                  <input 
+                    type="number" 
+                    value={rechunkSize} 
+                    onChange={e => setRechunkSize(Number(e.target.value))}
+                    className="w-full rounded-md border border-gray-300 py-1.5 px-2 text-sm" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Overlap</label>
+                  <input 
+                    type="number" 
+                    value={rechunkOverlap} 
+                    onChange={e => setRechunkOverlap(Number(e.target.value))}
+                    className="w-full rounded-md border border-gray-300 py-1.5 px-2 text-sm" 
+                  />
+                </div>
+                <div className="col-span-2 mt-2">
+                  <Button type="submit" disabled={isRechunking} className="w-full h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white" size="sm">
+                    {isRechunking ? <RefreshCw className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                    Rechunk Now
+                  </Button>
+                </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-6">
-                <div className="bg-gray-50 rounded-lg p-4 text-center border border-gray-100">
-                  <p className="text-sm text-gray-500 mb-1">Total Chunks</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.total_chunks}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4 text-center border border-gray-100">
-                  <p className="text-sm text-gray-500 mb-1">Avg Tokens</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.avg_tokens}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4 text-center border border-gray-100">
-                  <p className="text-sm text-gray-500 mb-1">Avg Characters</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.avg_characters}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4 text-center border border-gray-100">
-                  <p className="text-sm text-gray-500 mb-1">Largest Chunk</p>
-                  <p className="text-2xl font-bold text-indigo-600">{stats.largest_chunk} <span className="text-xs font-normal text-gray-500">chars</span></p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4 text-center border border-gray-100">
-                  <p className="text-sm text-gray-500 mb-1">Smallest Chunk</p>
-                  <p className="text-2xl font-bold text-indigo-600">{stats.smallest_chunk} <span className="text-xs font-normal text-gray-500">chars</span></p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4 text-center border border-gray-100">
-                  <p className="text-sm text-gray-500 mb-1">Chunk Variance</p>
-                  <p className="text-2xl font-bold text-indigo-600">{stats.chunk_variance}</p>
-                </div>
-              </div>
-            )}
+            </form>
           </CardContent>
         </Card>
       </div>
 
-      {/* Chunks List */}
-      <h2 className="text-xl font-bold mb-4 flex items-center text-gray-800">
-        Generated Chunks <span className="ml-2 bg-indigo-100 text-indigo-800 text-xs px-2.5 py-0.5 rounded-full">{chunks.length}</span>
-      </h2>
-      
-      {chunks.length === 0 ? (
-        <Card className="border-dashed bg-gray-50">
-          <CardContent className="p-12 text-center text-gray-500">
-            Click "Generate Chunks" to visualize how this document is segmented.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {chunks.map((chunk, index) => (
-            <Card key={chunk.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-              <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between items-center text-sm">
-                <span className="font-semibold text-gray-700">Chunk {chunk.chunk_index + 1}</span>
-                <div className="flex space-x-4 text-gray-500">
-                  <span>Tokens: <strong className="text-gray-700">{chunk.token_count}</strong></span>
-                  <span>Chars: <strong className="text-gray-700">{chunk.character_count}</strong></span>
-                  <span className="capitalize text-indigo-600">{chunk.chunk_strategy}</span>
-                </div>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <div>
+            <CardTitle>Chunk Viewer</CardTitle>
+            <CardDescription>View, search, and manage individual chunks.</CardDescription>
+          </div>
+          <div className="flex space-x-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search chunks..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="pl-9 pr-4 py-2 border rounded-md text-sm w-64 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <Button variant="destructive" onClick={handleDeleteAll}>
+              <Trash2 className="w-4 h-4 mr-2" /> Delete All Chunks
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto border rounded-lg mt-4">
+            <table className="w-full text-sm text-left text-gray-500">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                <tr>
+                  <th scope="col" className="px-4 py-3 w-16 text-center">#</th>
+                  <th scope="col" className="px-4 py-3">Chunk Content</th>
+                  <th scope="col" className="px-4 py-3 w-20 text-center">Tokens</th>
+                  <th scope="col" className="px-4 py-3 w-20 text-center">Length</th>
+                  <th scope="col" className="px-4 py-3 w-20 text-center">Page</th>
+                  <th scope="col" className="px-4 py-3 w-24">Strategy</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">Loading chunks...</td></tr>
+                ) : filteredChunks.length === 0 ? (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">No chunks found.</td></tr>
+                ) : (
+                  filteredChunks.map((chunk) => (
+                    <tr key={chunk._id} className="bg-white border-b hover:bg-gray-50">
+                      <td className="px-4 py-3 text-center font-medium text-gray-900">{chunk.chunk_index + 1}</td>
+                      <td className="px-4 py-3">
+                        <div className="line-clamp-3 text-xs text-gray-600 leading-relaxed font-serif max-w-2xl">
+                          {chunk.content}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                          {chunk.token_count}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center text-gray-400">{chunk.content ? chunk.content.length : 0}</td>
+                      <td className="px-4 py-3 text-center font-medium">{chunk.page_number}</td>
+                      <td className="px-4 py-3 capitalize text-indigo-600 font-medium">{chunk.chunk_strategy}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {pagination && pagination.total_pages > 1 && !searchQuery && (
+            <div className="flex items-center justify-between mt-6">
+              <span className="text-sm text-gray-700">
+                Showing <span className="font-semibold text-gray-900">{(page - 1) * pagination.limit + 1}</span> to <span className="font-semibold text-gray-900">{Math.min(page * pagination.limit, pagination.total)}</span> of <span className="font-semibold text-gray-900">{pagination.total}</span> chunks
+              </span>
+              <div className="inline-flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1 || isLoading}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.min(pagination.total_pages, p + 1))}
+                  disabled={page === pagination.total_pages || isLoading}
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
               </div>
-              <CardContent className="p-4 text-gray-800 leading-relaxed font-serif">
-                {chunk.chunk_text}
-              </CardContent>
-            </Card>
-          ))}
-          {stats?.total_chunks > 100 && (
-            <div className="text-center p-4 text-gray-500 bg-gray-50 rounded-lg">
-              Showing first 100 chunks. {stats.total_chunks - 100} more chunks are hidden in this preview.
             </div>
           )}
-        </div>
-      )}
+          {searchQuery && (
+             <div className="text-center mt-4 text-sm text-gray-500">
+               Pagination is disabled while searching. Showing matches from the current page.
+             </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

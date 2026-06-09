@@ -18,25 +18,31 @@ def validate_file(file_path: str, original_filename: str, file_type: str) -> boo
         
     return True
 
-def extract_text(file_path: str, file_type: str) -> str:
-    """Extract text based on file type."""
-    extracted_text = ""
+def extract_text(file_path: str, file_type: str) -> List[Dict[str, Any]]:
+    """Extract text based on file type. Returns list of pages."""
+    extracted_pages = []
     try:
         if file_type == "PDF":
             doc = fitz.open(file_path)
-            for page in doc:
+            for i, page in enumerate(doc):
                 text = page.get_text("text")
                 if text.strip():
-                    extracted_text += text + "\n"
+                    extracted_pages.append({"page_number": i + 1, "text": text + "\n"})
         elif file_type == "DOCX":
             doc = DocxDocument(file_path)
+            text = ""
             for para in doc.paragraphs:
                 if para.text.strip():
-                    extracted_text += para.text + "\n"
+                    text += para.text + "\n"
+            if text:
+                extracted_pages.append({"page_number": 1, "text": text})
         elif file_type == "TXT":
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                extracted_text = f.read()
+                text = f.read()
+                if text.strip():
+                    extracted_pages.append({"page_number": 1, "text": text})
         elif file_type == "CSV":
+            text = ""
             with open(file_path, newline='', encoding="utf-8", errors="ignore") as csvfile:
                 reader = csv.reader(csvfile)
                 headers = next(reader, None)
@@ -44,13 +50,15 @@ def extract_text(file_path: str, file_type: str) -> str:
                     for row in reader:
                         for idx, val in enumerate(row):
                             if idx < len(headers):
-                                extracted_text += f"{headers[idx]}: {val}\n"
-                        extracted_text += "\n"
+                                text += f"{headers[idx]}: {val}\n"
+                        text += "\n"
+            if text.strip():
+                extracted_pages.append({"page_number": 1, "text": text})
     except Exception as e:
         logger.error(f"Error extracting text from {file_path}: {str(e)}")
         raise e
         
-    return extracted_text
+    return extracted_pages
 
 def extract_metadata(file_path: str, file_type: str, extracted_text: str) -> Dict[str, Any]:
     """Calculate and return document metadata."""
@@ -85,8 +93,12 @@ async def process_document(document_id: str, file_path: str, file_type: str):
         )
         
         # 1. Extract Text
-        extracted_text = extract_text(file_path, file_type)
-        if not extracted_text.strip():
+        extracted_pages = extract_text(file_path, file_type)
+        if not extracted_pages:
+            raise ValueError("Extracted text is empty.")
+            
+        full_text = "\n".join([p["text"] for p in extracted_pages])
+        if not full_text.strip():
             raise ValueError("Extracted text is empty.")
             
         await DocumentRepository.update_document(
@@ -95,7 +107,7 @@ async def process_document(document_id: str, file_path: str, file_type: str):
         )
         
         # 2. Extract Metadata
-        metadata = extract_metadata(file_path, file_type, extracted_text)
+        metadata = extract_metadata(file_path, file_type, full_text)
         
         # 3. Update Status
         await DocumentRepository.update_document(
