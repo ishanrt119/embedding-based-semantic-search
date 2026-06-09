@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database.mongodb import db_client
+from vectorstore.index_manager import index_manager
 
 app = FastAPI(
     title="AI Semantic Search & RAG Platform",
@@ -20,6 +21,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     await db_client.connect()
+    index_manager.restore_indexes()
 
 @app.on_event("shutdown")
 async def shutdown():

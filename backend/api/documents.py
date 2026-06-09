@@ -9,6 +9,11 @@ from services.document_processor import process_document, validate_file, SUPPORT
 from database.repositories.user_repository import UserRepository
 from database.repositories.document_repository import DocumentRepository
 from database.repositories.chunk_repository import ChunkRepository
+from database.repositories.embedding_repository import EmbeddingRepository
+from database.repositories.job_repository import JobRepository
+from embeddings.embedding_service import generate_embeddings_background
+from vectorstore.vector_service import VectorService
+from database.repositories.vector_index_repository import VectorIndexRepository
 
 router = APIRouter()
 
@@ -252,6 +257,9 @@ class EmbeddingRequest(BaseModel):
     model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     batch_size: int = 64
 
+class IndexRequest(BaseModel):
+    index_type: str = "IndexFlatL2"
+
 @router.post("/{document_id}/embeddings/generate")
 async def generate_embeddings_endpoint(
     document_id: str, 
@@ -294,7 +302,7 @@ async def get_embedding_status(document_id: str, user_id: str = Depends(get_curr
         
     job = await JobRepository.get_job_by_document(document_id)
     if not job:
-        raise HTTPException(status_code=404, detail="No embedding job found for this document")
+        return {"current_status": "none"}
         
     if "_id" in job:
         job["_id"] = str(job["_id"])
@@ -374,3 +382,76 @@ async def regenerate_embeddings_endpoint(
         "status": "started",
         "job_id": job["id"]
     }
+
+@router.post("/{document_id}/index")
+async def index_document_embeddings(
+    document_id: str,
+    request: IndexRequest,
+    background_tasks: BackgroundTasks,
+    user_id: str = Depends(get_current_user_id)
+):
+    document = await DocumentRepository.get_document_by_id(document_id)
+    if not document or document.get("user_id") != user_id:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    background_tasks.add_task(
+        VectorService.process_document_indexing,
+        document_id=document_id,
+        user_id=user_id,
+        index_type=request.index_type
+    )
+    
+    return {"message": "Indexing started"}
+
+@router.get("/{document_id}/index/status")
+async def get_index_status(
+    document_id: str,
+    user_id: str = Depends(get_current_user_id)
+):
+    document = await DocumentRepository.get_document_by_id(document_id)
+    if not document or document.get("user_id") != user_id:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    indexed_vectors = await VectorIndexRepository.count_indexed_by_document(document_id, user_id)
+    
+    return {
+        "status": document.get("status", "unknown"),
+        "indexed_vectors": indexed_vectors
+    }
+
+@router.delete("/{document_id}/index")
+async def delete_document_index(
+    document_id: str,
+    user_id: str = Depends(get_current_user_id)
+):
+    document = await DocumentRepository.get_document_by_id(document_id)
+    if not document or document.get("user_id") != user_id:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    from vectorstore.index_manager import index_manager
+    deleted = await index_manager.remove_document_vectors(user_id, document_id)
+    
+    # Update status back to embedded
+    await DocumentRepository.update_document(document_id, {"status": "embedded"})
+    
+    return {"message": f"Deleted {deleted} indexed vectors"}
+
+@router.post("/{document_id}/reindex")
+async def reindex_document(
+    document_id: str,
+    request: IndexRequest,
+    background_tasks: BackgroundTasks,
+    user_id: str = Depends(get_current_user_id)
+):
+    document = await DocumentRepository.get_document_by_id(document_id)
+    if not document or document.get("user_id") != user_id:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    background_tasks.add_task(
+        VectorService.reindex_document,
+        document_id=document_id,
+        user_id=user_id,
+        index_type=request.index_type
+    )
+    
+    return {"message": "Reindexing started"}

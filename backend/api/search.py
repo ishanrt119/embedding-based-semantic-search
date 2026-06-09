@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-from vectorstore.faiss_store import faiss_store
+from vectorstore.index_manager import index_manager
 from embeddings.generator import generate_embedding
 from rank_bm25 import BM25Okapi
 import time
@@ -21,18 +21,53 @@ from api.auth import get_current_user
 async def get_current_user_id(current_user: dict = Depends(get_current_user)):
     return current_user["id"]
 
+@router.get("/stats")
+async def get_index_stats(user_id: str = Depends(get_current_user_id)):
+    stats = index_manager.get_stats(user_id)
+    return stats
+
+class VectorSearchQuery(BaseModel):
+    query: str
+    top_k: int = 5
+
+@router.post("/vector")
+async def vector_search(query: VectorSearchQuery, user_id: str = Depends(get_current_user_id)):
+    start_time = time.time()
+    
+    query_emb = generate_embedding(query.query)
+    
+    # Use index_manager to search isolated FAISS index
+    results = await index_manager.search(user_id, query_emb, top_k=query.top_k)
+    
+    # Enrich with chunk contents
+    for res in results:
+        chunk_id = res.get("chunk_id")
+        if chunk_id:
+            chunk_metadata = await ChunkRepository.get_chunk_by_id(chunk_id)
+            if chunk_metadata:
+                if "_id" in chunk_metadata:
+                    chunk_metadata["_id"] = str(chunk_metadata["_id"])
+                res["chunk_content"] = chunk_metadata.get("content", "")
+                
+    latency = (time.time() - start_time) * 1000
+    
+    return {
+        "results": results,
+        "latency_ms": latency
+    }
+
 @router.post("/")
 async def search(query: SearchQuery, user_id: str = Depends(get_current_user_id)):
     start_time = time.time()
     
     # 1. Semantic Search (Vector)
     query_emb = generate_embedding(query.query)
-    semantic_results = faiss_store.search(query_emb, top_k=query.top_k)
+    semantic_results = await index_manager.search(user_id, query_emb, top_k=query.top_k)
     
     # Enrich semantic results from MongoDB
     enriched_semantic_results = []
     for res in semantic_results:
-        chunk_id = res.get("id")
+        chunk_id = res.get("chunk_id")
         if chunk_id:
             chunk_metadata = await ChunkRepository.get_chunk_by_id(chunk_id)
             if chunk_metadata:

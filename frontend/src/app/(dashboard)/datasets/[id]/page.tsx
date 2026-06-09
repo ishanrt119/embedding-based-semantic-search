@@ -66,6 +66,11 @@ export default function DatasetDetailsPage() {
   // Embedding Job State
   const [embeddingJobStatus, setEmbeddingJobStatus] = useState<any>(null)
 
+  // Index State
+  const [indexJobStatus, setIndexJobStatus] = useState<any>(null)
+  const [isIndexing, setIsIndexing] = useState(false)
+  const [indexType, setIndexType] = useState("IndexFlatL2")
+
   const fetchDatasetData = async () => {
     try {
       const [docRes, chunkRes, embRes] = await Promise.all([
@@ -228,6 +233,67 @@ export default function DatasetDetailsPage() {
     }
   }
 
+  const fetchIndexStatus = async () => {
+    if (!token || !id) return
+    try {
+      const res = await fetch(`http://localhost:8000/api/documents/${id}/index/status`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setIndexJobStatus(data)
+      } else {
+        setIndexJobStatus({ status: "none", indexed_vectors: 0 })
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleIndexEmbeddings = async (isReindexing: boolean = false) => {
+    if (!token || !id) return
+    setIsIndexing(true)
+    try {
+      const endpoint = isReindexing ? "reindex" : "index"
+      const res = await fetch(`http://localhost:8000/api/documents/${id}/${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ index_type: indexType })
+      })
+      if (res.ok) {
+        setIndexJobStatus({ status: "indexing", indexed_vectors: 0 })
+        await fetchDatasetData()
+      } else {
+        const errData = await res.json()
+        alert(`Failed to index: ${errData.detail}`)
+      }
+    } catch (err) {
+      console.error(err)
+      alert("An error occurred while indexing embeddings.")
+    } finally {
+      setIsIndexing(false)
+    }
+  }
+
+  const handleDeleteIndex = async () => {
+    if (!confirm("Are you sure you want to remove this document from the vector index?")) return
+    try {
+      const res = await fetch(`http://localhost:8000/api/documents/${id}/index`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+      if (res.ok) {
+        setIndexJobStatus({ status: "none", indexed_vectors: 0 })
+        await fetchDatasetData()
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
@@ -245,6 +311,22 @@ export default function DatasetDetailsPage() {
         if (interval) clearInterval(interval)
     }
   }, [id, token, embeddingJobStatus?.current_status])
+
+  useEffect(() => {
+    let indexInterval: NodeJS.Timeout;
+    
+    if (!indexJobStatus || ["indexing", "starting"].includes(indexJobStatus.status) || dataset?.processing_status === "indexing") {
+        if (!indexJobStatus) fetchIndexStatus();
+        
+        indexInterval = setInterval(() => {
+            fetchIndexStatus()
+        }, 2000)
+    }
+
+    return () => {
+        if (indexInterval) clearInterval(indexInterval)
+    }
+  }, [id, token, indexJobStatus?.status, dataset?.processing_status])
 
   useEffect(() => {
     if (embeddingCount > 0) {
@@ -779,6 +861,62 @@ export default function DatasetDetailsPage() {
                 </div>
               ) : embeddingCount > 0 ? (
                 <div className="flex-1 flex flex-col">
+                  {/* Index Configuration Card */}
+                  <div className="p-5 border-b border-border bg-muted/30">
+                    <div className="bg-card rounded-lg border border-border overflow-hidden shadow-sm">
+                      <div className="border-b border-border bg-muted px-5 py-4 flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-medium text-foreground flex items-center">
+                            <Database className="w-4 h-4 mr-2 text-indigo-500" />
+                            FAISS Vector Indexing
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Index embeddings to enable natural language search.
+                          </p>
+                        </div>
+                        {indexJobStatus?.status === "indexed" && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded">
+                                    Indexed ({indexJobStatus.indexed_vectors} vectors)
+                                </span>
+                                <Button variant="outline" size="sm" onClick={handleDeleteIndex} className="h-8 text-red-600 border-red-200 hover:bg-red-50">
+                                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Remove
+                                </Button>
+                            </div>
+                        )}
+                      </div>
+                      
+                      <div className="p-5 flex items-end gap-4 bg-card">
+                        <div className="space-y-1.5 flex-1 max-w-[200px]">
+                          <Label className="text-xs text-muted-foreground font-medium">Index Type</Label>
+                          <Select value={indexType} onValueChange={(val) => val && setIndexType(val)}>
+                            <SelectTrigger className="h-9 text-sm bg-card border-border">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover text-popover-foreground">
+                              <SelectItem value="IndexFlatL2">Flat L2 (Exact)</SelectItem>
+                              <SelectItem value="IndexFlatIP">Flat Inner Product</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {indexJobStatus?.status === "indexing" || dataset?.processing_status === "indexing" ? (
+                            <Button disabled className="h-9 min-w-[140px] bg-blue-600 text-white shadow-sm">
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Indexing...
+                            </Button>
+                        ) : indexJobStatus?.status === "indexed" ? (
+                            <Button onClick={() => handleIndexEmbeddings(true)} disabled={isIndexing} className="h-9 min-w-[140px] bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm">
+                              <RefreshCw className="w-4 h-4 mr-2" /> Reindex
+                            </Button>
+                        ) : (
+                            <Button onClick={() => handleIndexEmbeddings()} disabled={isIndexing} className="h-9 min-w-[140px] bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+                              <Database className="w-4 h-4 mr-2" /> Index Vectors
+                            </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   {isFetchingEmbeddings ? (
                     <div className="flex-1 flex items-center justify-center">
                       <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />

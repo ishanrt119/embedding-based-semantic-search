@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 from embeddings.generator import generate_embedding
-from vectorstore.faiss_store import faiss_store
+from vectorstore.index_manager import index_manager
 import os
 
 from database.repositories.chunk_repository import ChunkRepository
@@ -40,7 +40,7 @@ async def rag_chat(query: RAGQuery, user_id: str = Depends(get_current_user_id))
     
     # 1. Retrieve context
     query_emb = generate_embedding(query.query)
-    retrieved_chunks = faiss_store.search(query_emb, top_k=3)
+    retrieved_chunks = await index_manager.search(user_id, query_emb, top_k=3)
     
     enriched_chunks = []
     for c in retrieved_chunks:
