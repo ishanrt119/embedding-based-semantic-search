@@ -24,7 +24,7 @@ async def get_current_user_id(current_user: dict = Depends(get_current_user)):
 
 class RAGQuery(BaseModel):
     query: str
-    model: str = "llama3-8b-8192" # default groq model
+    model: str = "llama-3.1-8b-instant" # default groq model
     session_id: Optional[str] = None
     
 @router.post("/")

@@ -55,8 +55,8 @@ async def generate_embeddings_background(job_id: str, document_id: str, user_id:
             import asyncio
             vectors = await asyncio.to_thread(model.embed_batch, texts)
             
-            # Prepare metadata for MongoDB (We explicitly DO NOT store the raw vectors per prompt instructions)
-            # Vectors will later be stored in FAISS in Module 4.
+            # Prepare metadata and vectors for MongoDB 
+            # Vectors will be read by Module 4 to populate the FAISS index
             embeddings_metadata = []
             for i, chunk in enumerate(batch_chunks):
                 embeddings_metadata.append({
@@ -65,7 +65,8 @@ async def generate_embeddings_background(job_id: str, document_id: str, user_id:
                     "user_id": user_id,
                     "embedding_model": model_name,
                     "vector_dimension": model.dimension,
-                    "embedding_status": "computed"
+                    "embedding_status": "computed",
+                    "vector": vectors[i]
                 })
                 
             await EmbeddingRepository.create_embeddings(embeddings_metadata)
@@ -91,7 +92,7 @@ async def generate_embeddings_background(job_id: str, document_id: str, user_id:
         
         await DocumentRepository.update_document(
             document_id=document_id,
-            data={"processing_status": "embedded"}
+            data={"processing_status": "embedded", "embedding_model": model_name}
         )
         
         logger.info(f"Completed embedding job {job_id} in {final_time_ms}ms")

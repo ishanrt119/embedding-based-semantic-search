@@ -79,8 +79,9 @@ class VectorIndexManager:
         results = []
         for i, meta in enumerate(metadata_list):
             if meta:
-                # distance can be casted to float
-                meta["similarity_score"] = float(distances[i])
+                raw_dist = float(distances[i])
+                meta["raw_distance"] = raw_dist
+                meta["similarity_score"] = 1.0 / (1.0 + raw_dist)
                 if "_id" in meta:
                     meta["_id"] = str(meta["_id"])
                 results.append(meta)

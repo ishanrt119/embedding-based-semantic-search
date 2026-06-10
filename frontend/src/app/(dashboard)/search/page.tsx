@@ -1,32 +1,55 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { Search, SlidersHorizontal, Loader2, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface SearchResult {
-  id: string
-  score: number
+  chunk_id: string
+  chunk_preview: string
   content: string
-  hybrid_score?: number
-  metadata?: {
-    document_id: string
-    page_number?: number
-    chunk_index?: number
-  }
+  document_id: string
+  dataset_id: string
+  page_number?: number
+  similarity_score: number
+  raw_distance: number
+  created_at: string
+  document_name: string
 }
 
 export default function SearchPage() {
   const { token } = useAuth()
   const [query, setQuery] = useState("")
-  const [searchMode, setSearchMode] = useState("hybrid")
+  const [searchMode, setSearchMode] = useState("semantic")
   const [isSearching, setIsSearching] = useState(false)
   const [results, setResults] = useState<SearchResult[]>([])
   const [hasSearched, setHasSearched] = useState(false)
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null)
+  
+  const [datasets, setDatasets] = useState<any[]>([])
+  const [selectedDatasetId, setSelectedDatasetId] = useState<string>("all")
+
+  useEffect(() => {
+    if (!token) return
+    const fetchDatasets = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/documents?limit=100", {
+          headers: { "Authorization": `Bearer ${token}` }
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setDatasets(data.data || [])
+        }
+      } catch (err) {
+        console.error("Failed to fetch datasets", err)
+      }
+    }
+    fetchDatasets()
+  }, [token])
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,13 +60,17 @@ export default function SearchPage() {
     setSelectedResult(null)
 
     try {
-      const res = await fetch("http://localhost:8000/api/search", {
+      const res = await fetch("http://localhost:8000/api/search/semantic", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ query, top_k: 10, search_type: searchMode })
+        body: JSON.stringify({ 
+          query, 
+          top_k: 10,
+          dataset_id: selectedDatasetId === "all" ? null : selectedDatasetId
+        })
       })
       
       const data = await res.json()
@@ -55,6 +82,13 @@ export default function SearchPage() {
     } finally {
       setIsSearching(false)
     }
+  }
+
+  const handleClear = () => {
+    setQuery("")
+    setHasSearched(false)
+    setResults([])
+    setSelectedResult(null)
   }
 
   return (
@@ -69,21 +103,64 @@ export default function SearchPage() {
         <div className="space-y-6">
           <div>
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 block">Search Mode</Label>
-            <div className="space-y-2 text-sm">
-              {['hybrid', 'semantic', 'keyword'].map((mode) => (
-                <label key={mode} className="flex items-center gap-2.5 cursor-pointer group">
-                  <input 
-                    type="radio" 
-                    name="searchMode" 
-                    value={mode}
-                    checked={searchMode === mode}
-                    onChange={(e) => setSearchMode(e.target.value)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-600"
-                  />
-                  <span className="text-secondary-foreground capitalize group-hover:text-foreground transition-colors">{mode}</span>
-                </label>
-              ))}
+            <div className="space-y-3 text-sm">
+              <label className="flex items-center gap-2.5 cursor-pointer group">
+                <input 
+                  type="radio" 
+                  name="searchMode" 
+                  value="semantic"
+                  checked={searchMode === "semantic"}
+                  onChange={(e) => setSearchMode(e.target.value)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-600"
+                />
+                <span className="text-secondary-foreground font-medium group-hover:text-foreground transition-colors">Semantic</span>
+              </label>
+              
+              <label className="flex items-center gap-2.5 cursor-not-allowed opacity-50">
+                <input 
+                  type="radio" 
+                  name="searchMode" 
+                  value="hybrid"
+                  disabled
+                  className="w-4 h-4 text-gray-400 border-gray-300"
+                />
+                <span className="text-secondary-foreground flex items-center gap-2">
+                  Hybrid
+                  <span className="text-[9px] uppercase tracking-wider font-semibold bg-muted px-1.5 py-0.5 rounded border border-border">Coming Soon</span>
+                </span>
+              </label>
+
+              <label className="flex items-center gap-2.5 cursor-not-allowed opacity-50">
+                <input 
+                  type="radio" 
+                  name="searchMode" 
+                  value="keyword"
+                  disabled
+                  className="w-4 h-4 text-gray-400 border-gray-300"
+                />
+                <span className="text-secondary-foreground flex items-center gap-2">
+                  Keyword
+                  <span className="text-[9px] uppercase tracking-wider font-semibold bg-muted px-1.5 py-0.5 rounded border border-border">Coming Soon</span>
+                </span>
+              </label>
             </div>
+          </div>
+
+          <div className="pt-4 border-t border-border">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 block">Dataset</Label>
+            <Select value={selectedDatasetId} onValueChange={(val) => setSelectedDatasetId(val || "all")}>
+              <SelectTrigger className="w-full h-9 text-xs">
+                <SelectValue placeholder="All Datasets" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Datasets</SelectItem>
+                {datasets.map((ds) => (
+                  <SelectItem key={ds.id || ds._id} value={ds.id || ds._id}>
+                    {ds.original_filename || ds.filename}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
@@ -92,73 +169,91 @@ export default function SearchPage() {
       <div className="flex-1 flex flex-col relative border-r border-border bg-card">
         {/* Sticky Search Bar */}
         <div className="p-4 border-b border-border bg-card z-10">
-          <form onSubmit={handleSearch} className="relative flex items-center">
-            <Search className="absolute left-3 w-4 h-4 text-muted-foreground z-10" />
-            <Input 
-              type="text" 
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search across datasets..." 
-              className="w-full pl-9 pr-24 py-2 bg-card h-10 shadow-sm"
-            />
+          <form onSubmit={handleSearch} className="relative flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground z-10" />
+              <Input 
+                type="text" 
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search across your knowledge base..." 
+                className="w-full pl-9 pr-10 py-2 bg-card h-10 shadow-sm"
+              />
+              {query && (
+                <button type="button" onClick={handleClear} className="absolute right-3 top-3 text-muted-foreground hover:text-foreground">
+                  <span className="sr-only">Clear</span>
+                  <div className="w-4 h-4 flex items-center justify-center font-bold text-xs bg-muted rounded-full">×</div>
+                </button>
+              )}
+            </div>
             <Button 
               type="submit"
-              size="sm"
               disabled={isSearching || !query.trim()}
-              className="absolute right-1.5 h-7 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+              className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm shrink-0"
             >
-              {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Search"}
+              {isSearching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {isSearching ? "Searching..." : "Search"}
             </Button>
           </form>
         </div>
 
         {/* Results List */}
-        <div className="flex-1 overflow-y-auto p-4 bg-card">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-card">
           {!hasSearched ? (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-              <Search className="w-8 h-8 mb-3 opacity-20" />
-              <p className="text-sm font-medium text-foreground mb-1">Search your knowledge base</p>
-              <p className="text-xs text-center">Type a query above to find relevant information.</p>
+              <Search className="w-10 h-10 mb-4 opacity-20" />
+              <p className="text-base font-medium text-foreground mb-1">Semantic Search Engine</p>
+              <p className="text-sm max-w-sm text-center leading-relaxed">
+                Enter a question or concept. Aether will find the most relevant information based on meaning, not just exact keywords.
+              </p>
             </div>
           ) : isSearching ? (
-            <div className="space-y-3">
+            <div className="space-y-4 max-w-4xl mx-auto">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="animate-pulse bg-card border border-border rounded-lg p-4 space-y-2">
+                <div key={i} className="animate-pulse bg-card border border-border rounded-xl p-5 space-y-3 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="h-4 bg-gray-100 rounded w-1/3"></div>
+                    <div className="h-4 bg-blue-50 rounded w-16"></div>
+                  </div>
+                  <div className="h-12 bg-muted rounded w-full"></div>
                   <div className="h-3 bg-gray-100 rounded w-1/4"></div>
-                  <div className="h-10 bg-muted rounded w-full"></div>
                 </div>
               ))}
             </div>
           ) : results.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-              <p className="text-sm font-medium text-foreground mb-1">No results found</p>
-              <p className="text-xs">Try adjusting your search terms or filters.</p>
+              <p className="text-base font-medium text-foreground mb-1">No results found</p>
+              <p className="text-sm">We couldn't find any documents matching that meaning.</p>
             </div>
           ) : (
-            <div className="space-y-3 pb-20">
-              <p className="text-xs text-muted-foreground font-medium mb-4 px-1">{results.length} results found</p>
+            <div className="space-y-4 pb-20 max-w-4xl mx-auto">
+              <p className="text-sm text-muted-foreground font-medium mb-5 px-1">{results.length} results found for semantic search</p>
               {results.map((result, idx) => (
                 <div 
                   key={idx} 
                   onClick={() => setSelectedResult(result)}
-                  className={`p-4 rounded-lg border transition-all cursor-pointer text-sm ${
-                    selectedResult?.id === result.id 
+                  className={`p-5 rounded-xl border transition-all cursor-pointer text-sm ${
+                    selectedResult?.chunk_id === result.chunk_id 
                       ? 'border-blue-500 bg-blue-50 shadow-sm ring-1 ring-blue-500' 
                       : 'border-border bg-card hover:border-gray-300 shadow-sm'
                   }`}
                 >
-                  <div className="flex items-start justify-between mb-1.5">
-                    <div className="flex items-center gap-1.5 font-medium text-secondary-foreground">
-                      <FileText className="w-3.5 h-3.5 text-muted-foreground" />
-                      {result.metadata?.document_id?.slice(0,8) || "Unknown Dataset"}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2 font-semibold text-secondary-foreground text-base">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      {result.document_name}
                     </div>
-                    <span className="text-[10px] font-mono bg-card text-secondary-foreground px-1.5 py-0.5 rounded border border-border">
-                      {(result.hybrid_score || result.score || 0).toFixed(3)}
+                    <span className="text-[11px] font-mono font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded-md border border-blue-200 shadow-sm" title={`Raw Distance: ${result.raw_distance}`}>
+                      {(result.similarity_score * 100).toFixed(1)}% Match
                     </span>
                   </div>
-                  <p className="text-foreground leading-relaxed line-clamp-2">
-                    {result.content}
+                  <p className="text-foreground leading-relaxed">
+                    {result.chunk_preview}
                   </p>
+                  <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground font-medium bg-background px-3 py-1.5 rounded-md border border-border w-fit">
+                    {result.page_number && <span className="flex items-center gap-1.5">📄 Page {result.page_number}</span>}
+                    <span className="flex items-center gap-1.5">🕒 {new Date(result.created_at).toLocaleDateString()}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -167,7 +262,7 @@ export default function SearchPage() {
       </div>
 
       {/* 3. Metadata Panel (320px) */}
-      <div className={`w-[320px] bg-card flex flex-col shrink-0 overflow-y-auto transition-transform ${selectedResult ? 'block' : 'hidden xl:block opacity-30 pointer-events-none'}`}>
+      <div className={`w-[320px] bg-card flex flex-col shrink-0 overflow-y-auto transition-transform border-l border-border ${selectedResult ? 'block' : 'hidden xl:block opacity-30 pointer-events-none bg-muted/50'}`}>
         <div className="p-4 border-b border-border bg-card">
           <h3 className="font-semibold text-foreground text-sm">Result Details</h3>
         </div>
@@ -175,33 +270,45 @@ export default function SearchPage() {
         {selectedResult ? (
           <div className="p-5 space-y-6">
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Source Text</Label>
-              <div className="bg-muted p-3 rounded border border-border text-xs text-foreground whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 block">Full Source Content</Label>
+              <div className="bg-white p-4 rounded-lg border border-border shadow-sm text-sm text-foreground whitespace-pre-wrap leading-relaxed max-h-[40vh] overflow-y-auto font-serif">
                 {selectedResult.content}
               </div>
             </div>
 
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Metadata</Label>
-              <div className="bg-card p-3 rounded border border-border text-xs space-y-2 shadow-sm">
-                <div className="flex justify-between border-b border-border pb-2">
-                  <span className="text-muted-foreground">Document ID</span>
-                  <span className="font-mono text-foreground">{selectedResult.metadata?.document_id?.slice(0,8) || "N/A"}</span>
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 block">Metadata Details</Label>
+              <div className="bg-white p-4 rounded-lg border border-border text-sm space-y-3 shadow-sm">
+                <div className="flex flex-col gap-1 pb-3 border-b border-border">
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Document Name</span>
+                  <span className="font-semibold text-foreground truncate" title={selectedResult.document_name}>{selectedResult.document_name}</span>
                 </div>
-                <div className="flex justify-between pt-1">
-                  <span className="text-muted-foreground">Chunk Index</span>
-                  <span className="text-foreground font-medium">{selectedResult.metadata?.chunk_index ?? "N/A"}</span>
+                <div className="flex flex-col gap-1 pb-3 border-b border-border">
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Document ID</span>
+                  <span className="font-mono text-foreground text-xs bg-muted px-2 py-1 rounded w-fit">{selectedResult.document_id}</span>
+                </div>
+                <div className="flex justify-between items-center pb-3 border-b border-border">
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Page Number</span>
+                  <span className="text-foreground font-bold">{selectedResult.page_number ?? "Unknown"}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Similarity Score</span>
+                  <span className="text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                    {(selectedResult.similarity_score * 100).toFixed(2)}%
+                  </span>
                 </div>
               </div>
             </div>
 
-            <Button variant="outline" className="w-full">
+            <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80">
               Open Document
             </Button>
           </div>
         ) : (
-          <div className="p-5 text-center text-sm text-muted-foreground mt-10">
-            Select a result to view details
+          <div className="p-5 flex flex-col items-center justify-center text-center text-sm text-muted-foreground mt-20 h-full">
+            <FileText className="w-8 h-8 mb-3 opacity-20" />
+            <p>Select a search result</p>
+            <p className="text-xs mt-1">Full content and metadata will appear here</p>
           </div>
         )}
       </div>
