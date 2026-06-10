@@ -15,8 +15,10 @@ interface SearchResult {
   document_id: string
   dataset_id: string
   page_number?: number
-  similarity_score: number
-  raw_distance: number
+  similarity_score?: number
+  raw_distance?: number
+  bm25_score?: number
+  hybrid_score?: number
   created_at: string
   document_name: string
 }
@@ -60,7 +62,7 @@ export default function SearchPage() {
     setSelectedResult(null)
 
     try {
-      const res = await fetch("http://localhost:8000/api/search/semantic", {
+      const res = await fetch("http://localhost:8000/api/search", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -69,6 +71,7 @@ export default function SearchPage() {
         body: JSON.stringify({ 
           query, 
           top_k: 10,
+          search_type: searchMode,
           dataset_id: selectedDatasetId === "all" ? null : selectedDatasetId
         })
       })
@@ -116,32 +119,28 @@ export default function SearchPage() {
                 <span className="text-secondary-foreground font-medium group-hover:text-foreground transition-colors">Semantic</span>
               </label>
               
-              <label className="flex items-center gap-2.5 cursor-not-allowed opacity-50">
+              <label className="flex items-center gap-2.5 cursor-pointer group">
                 <input 
                   type="radio" 
                   name="searchMode" 
                   value="hybrid"
-                  disabled
-                  className="w-4 h-4 text-gray-400 border-gray-300"
+                  checked={searchMode === "hybrid"}
+                  onChange={(e) => setSearchMode(e.target.value)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-600"
                 />
-                <span className="text-secondary-foreground flex items-center gap-2">
-                  Hybrid
-                  <span className="text-[9px] uppercase tracking-wider font-semibold bg-muted px-1.5 py-0.5 rounded border border-border">Coming Soon</span>
-                </span>
+                <span className="text-secondary-foreground font-medium group-hover:text-foreground transition-colors">Hybrid</span>
               </label>
 
-              <label className="flex items-center gap-2.5 cursor-not-allowed opacity-50">
+              <label className="flex items-center gap-2.5 cursor-pointer group">
                 <input 
                   type="radio" 
                   name="searchMode" 
                   value="keyword"
-                  disabled
-                  className="w-4 h-4 text-gray-400 border-gray-300"
+                  checked={searchMode === "keyword"}
+                  onChange={(e) => setSearchMode(e.target.value)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-600"
                 />
-                <span className="text-secondary-foreground flex items-center gap-2">
-                  Keyword
-                  <span className="text-[9px] uppercase tracking-wider font-semibold bg-muted px-1.5 py-0.5 rounded border border-border">Coming Soon</span>
-                </span>
+                <span className="text-secondary-foreground font-medium group-hover:text-foreground transition-colors">Keyword</span>
               </label>
             </div>
           </div>
@@ -202,9 +201,9 @@ export default function SearchPage() {
           {!hasSearched ? (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
               <Search className="w-10 h-10 mb-4 opacity-20" />
-              <p className="text-base font-medium text-foreground mb-1">Semantic Search Engine</p>
+              <p className="text-base font-medium text-foreground mb-1">Search Engine</p>
               <p className="text-sm max-w-sm text-center leading-relaxed">
-                Enter a question or concept. Aether will find the most relevant information based on meaning, not just exact keywords.
+                Enter a question or concept. Aether will find the most relevant information using semantic search, keyword search, or hybrid search.
               </p>
             </div>
           ) : isSearching ? (
@@ -227,7 +226,7 @@ export default function SearchPage() {
             </div>
           ) : (
             <div className="space-y-4 pb-20 max-w-4xl mx-auto">
-              <p className="text-sm text-muted-foreground font-medium mb-5 px-1">{results.length} results found for semantic search</p>
+              <p className="text-sm text-muted-foreground font-medium mb-5 px-1">{results.length} results found for {searchMode} search</p>
               {results.map((result, idx) => (
                 <div 
                   key={idx} 
@@ -243,9 +242,21 @@ export default function SearchPage() {
                       <FileText className="w-4 h-4 text-blue-600" />
                       {result.document_name}
                     </div>
-                    <span className="text-[11px] font-mono font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded-md border border-blue-200 shadow-sm" title={`Raw Distance: ${result.raw_distance}`}>
-                      {(result.similarity_score * 100).toFixed(1)}% Match
-                    </span>
+                    {searchMode === "semantic" && result.similarity_score !== undefined && (
+                      <span className="text-[11px] font-mono font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded-md border border-blue-200 shadow-sm" title={`Raw Distance: ${result.raw_distance}`}>
+                        {(result.similarity_score * 100).toFixed(1)}% Match
+                      </span>
+                    )}
+                    {searchMode === "keyword" && result.bm25_score !== undefined && (
+                      <span className="text-[11px] font-mono font-medium bg-orange-100 text-orange-700 px-2 py-1 rounded-md border border-orange-200 shadow-sm">
+                        Score: {result.bm25_score.toFixed(2)}
+                      </span>
+                    )}
+                    {searchMode === "hybrid" && result.hybrid_score !== undefined && (
+                      <span className="text-[11px] font-mono font-medium bg-purple-100 text-purple-700 px-2 py-1 rounded-md border border-purple-200 shadow-sm" title={`Semantic: ${(result.similarity_score! * 100).toFixed(1)}%, Keyword: ${result.bm25_score!.toFixed(2)}`}>
+                        Hybrid: {result.hybrid_score.toFixed(4)}
+                      </span>
+                    )}
                   </div>
                   <p className="text-foreground leading-relaxed">
                     {result.chunk_preview}
@@ -291,12 +302,30 @@ export default function SearchPage() {
                   <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Page Number</span>
                   <span className="text-foreground font-bold">{selectedResult.page_number ?? "Unknown"}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Similarity Score</span>
-                  <span className="text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                    {(selectedResult.similarity_score * 100).toFixed(2)}%
-                  </span>
-                </div>
+                {selectedResult.similarity_score !== undefined && selectedResult.similarity_score > 0 && (
+                  <div className="flex justify-between items-center pb-3 border-b border-border">
+                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Semantic Match</span>
+                    <span className="text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                      {(selectedResult.similarity_score * 100).toFixed(2)}%
+                    </span>
+                  </div>
+                )}
+                {selectedResult.bm25_score !== undefined && selectedResult.bm25_score > 0 && (
+                  <div className="flex justify-between items-center pb-3 border-b border-border">
+                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Keyword Score</span>
+                    <span className="text-orange-700 font-bold bg-orange-50 px-2 py-0.5 rounded border border-orange-100">
+                      {selectedResult.bm25_score.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                {selectedResult.hybrid_score !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Hybrid RRF Score</span>
+                    <span className="text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded border border-purple-100">
+                      {selectedResult.hybrid_score.toFixed(4)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 

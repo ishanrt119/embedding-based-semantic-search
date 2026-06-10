@@ -21,11 +21,19 @@ def get_chunker(strategy: str, chunk_size: int, overlap: int):
 
 async def delete_chunks(document_id: str):
     """Delete all chunks for a document and update status."""
+    document = await DocumentRepository.get_document_by_id(document_id)
+    if not document:
+        return
+        
     await ChunkRepository.delete_chunks_by_document(document_id)
     await DocumentRepository.update_document(
         document_id=document_id,
         data={"processing_status": "extracted"}
     )
+    
+    # Sync BM25 Index
+    from search_engine.bm25_search import bm25_index_manager
+    await bm25_index_manager.sync_user_index(document["user_id"])
 
 async def get_chunk_statistics(document_id: str) -> Dict[str, Any]:
     """Calculate and return statistics about chunks for a document."""
@@ -110,6 +118,10 @@ async def create_chunks(document_id: str, strategy: str = "recursive", chunk_siz
             document_id=document_id,
             data={"processing_status": "chunked"} 
         )
+        
+        # Sync BM25 Index
+        from search_engine.bm25_search import bm25_index_manager
+        await bm25_index_manager.sync_user_index(document["user_id"])
         
         duration = (time.time() - start_time) * 1000 # in ms
         logger.info(f"Chunk creation completed for {document_id}. Strategy: {strategy}. Time: {duration:.2f}ms")
