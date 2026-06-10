@@ -42,7 +42,7 @@ export default function SearchPage() {
     if (!token) return
     const fetchDatasets = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/documents?limit=100", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents?limit=100`, {
           headers: { "Authorization": `Bearer ${token}` }
         })
         if (res.ok) {
@@ -65,7 +65,7 @@ export default function SearchPage() {
     setSelectedResult(null)
 
     try {
-      const endpoint = useAdvancedRetrieval ? "http://localhost:8000/api/retrieval" : "http://localhost:8000/api/search"
+      const endpoint = useAdvancedRetrieval ? `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/retrieval` : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/search`
       const res = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -221,7 +221,7 @@ export default function SearchPage() {
               <Search className="w-10 h-10 mb-4 opacity-20" />
               <p className="text-base font-medium text-foreground mb-1">Search Engine</p>
               <p className="text-sm max-w-sm text-center leading-relaxed">
-                Enter a question or concept. Aether will find the most relevant information using semantic search, keyword search, or hybrid search.
+                Enter a question or concept. DocIntel will find the most relevant information using semantic search, keyword search, or hybrid search.
               </p>
             </div>
           ) : isSearching ? (

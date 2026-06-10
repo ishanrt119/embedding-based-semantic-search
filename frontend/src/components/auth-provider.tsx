@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const res = await fetch("http://localhost:8000/api/auth/me", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/auth/me`, {
           headers: {
             "Authorization": `Bearer ${storedToken}`
           }
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const [resource, config] = args
       
       // Only intercept local API calls
-      if (typeof resource === 'string' && resource.startsWith('http://localhost:8000/api')) {
+      if (typeof resource === 'string' && resource.startsWith(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api`)) {
         const newConfig = { ...config }
         newConfig.headers = {
           ...newConfig.headers,

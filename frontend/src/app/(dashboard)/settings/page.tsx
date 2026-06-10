@@ -15,8 +15,7 @@ export default function SettingsPage() {
   const tabs = [
     { id: "profile", label: "Profile", icon: User },
     { id: "security", label: "Security", icon: Shield },
-    { id: "api-keys", label: "API Keys", icon: Key },
-    { id: "billing", label: "Billing", icon: CreditCard },
+    { id: "appearance", label: "Appearance", icon: CreditCard },
   ]
 
   return (
@@ -137,33 +136,19 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeTab === 'api-keys' && (
+          {activeTab === 'appearance' && (
             <Card className="shadow-sm">
               <CardHeader className="border-b border-border pb-3 flex flex-row justify-between items-center space-y-0">
-                <CardTitle className="text-sm font-semibold">API Keys</CardTitle>
-                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white h-8">Create New Key</Button>
+                <CardTitle className="text-sm font-semibold">Appearance</CardTitle>
               </CardHeader>
-              <CardContent className="p-12 text-center text-sm text-muted-foreground">
-                <Key className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-                <p>No active API keys found.</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {activeTab === 'billing' && (
-            <Card className="shadow-sm">
-              <CardHeader className="border-b border-border pb-3">
-                <CardTitle className="text-sm font-semibold">Plan & Billing</CardTitle>
-              </CardHeader>
-              <CardContent className="p-8 flex flex-col sm:flex-row items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-semibold text-foreground text-lg">Developer Plan</h4>
-                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-bold uppercase tracking-wider">Current</span>
+              <CardContent className="p-8 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-semibold text-foreground text-sm">Theme Preference</h4>
+                    <p className="text-xs text-muted-foreground mt-1">Light theme is currently enforced for best reading experience.</p>
                   </div>
-                  <p className="text-sm text-muted-foreground">Up to 100 documents / 500 queries per month.</p>
+                  <Button disabled variant="outline" className="text-xs">Light Mode Active</Button>
                 </div>
-                <Button className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white">Upgrade to Pro</Button>
               </CardContent>
             </Card>
           )}

@@ -34,7 +34,7 @@ export default function IntelligencePage() {
 
   const fetchDatasets = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/documents?limit=100", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents?limit=100`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
       if (res.ok) {
@@ -54,7 +54,7 @@ export default function IntelligencePage() {
     setCompareData(null)
     
     try {
-      const res = await fetch("http://localhost:8000/api/intelligence/compare", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/intelligence/compare`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ document_ids: [compareDocA, compareDocB] })
@@ -82,7 +82,7 @@ export default function IntelligencePage() {
     setReportMarkdown("")
     
     try {
-      const res = await fetch("http://localhost:8000/api/intelligence/report", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/intelligence/report`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ 
@@ -111,7 +111,7 @@ export default function IntelligencePage() {
     setIsLoading(true)
     
     try {
-      const res = await fetch("http://localhost:8000/api/intelligence/report", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/intelligence/report`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ 
@@ -148,7 +148,7 @@ export default function IntelligencePage() {
     setContraData(null)
     
     try {
-      const res = await fetch("http://localhost:8000/api/intelligence/contradictions", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/intelligence/contradictions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ topic: contraTopic, document_ids: contraDocs })

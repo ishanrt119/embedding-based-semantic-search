@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
-import { LayoutDashboard, Database, Search, MessageSquare, BarChart3, UserCircle, ChevronsUpDown, LogOut, BrainCircuit } from "lucide-react"
+import { LayoutDashboard, Database, Search, MessageSquare, BarChart3, UserCircle, ChevronsUpDown, LogOut, BrainCircuit, Coffee } from "lucide-react"
 
 const navigation = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
@@ -11,7 +11,6 @@ const navigation = [
   { name: "Search", href: "/search", icon: Search },
   { name: "Chat", href: "/chat", icon: MessageSquare },
   { name: "Intelligence", href: "/intelligence", icon: BrainCircuit },
-  { name: "Analytics", href: "/analytics", icon: BarChart3 },
 ]
 
 export function Sidebar() {
@@ -62,6 +61,12 @@ export function Sidebar() {
 
       {/* User Profile */}
       <div className="p-3 border-t border-border mt-auto">
+        <Link 
+          href="/support"
+          className="w-full mb-3 flex items-center justify-center gap-2 px-2.5 py-2 text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm hover:bg-amber-100 rounded-md transition-colors"
+        >
+          <Coffee className="w-4 h-4" /> Support the Creator
+        </Link>
         <div className="flex items-center gap-3 px-2 py-2 w-full rounded-md bg-muted/30 border border-border/50">
           <div className="relative">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">

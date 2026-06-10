@@ -25,7 +25,7 @@ export default function DatasetsPage() {
 
   const fetchDatasets = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/documents", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
       if (res.ok) {
@@ -55,7 +55,7 @@ export default function DatasetsPage() {
     e.stopPropagation()
     if (!confirm("Delete this dataset?")) return
     try {
-      await fetch(`http://localhost:8000/api/documents/${id}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       })

@@ -74,9 +74,9 @@ export default function DatasetDetailsPage() {
   const fetchDatasetData = async () => {
     try {
       const [docRes, chunkRes, embRes] = await Promise.all([
-        fetch(`http://localhost:8000/api/documents/${id}`, { headers: { "Authorization": `Bearer ${token}` } }),
-        fetch(`http://localhost:8000/api/documents/${id}/chunk-stats`, { headers: { "Authorization": `Bearer ${token}` } }),
-        fetch(`http://localhost:8000/api/documents/${id}/embeddings?limit=1`, { headers: { "Authorization": `Bearer ${token}` } })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}`, { headers: { "Authorization": `Bearer ${token}` } }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}/chunk-stats`, { headers: { "Authorization": `Bearer ${token}` } }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}/embeddings?limit=1`, { headers: { "Authorization": `Bearer ${token}` } })
       ])
 
       if (!docRes.ok) {
@@ -106,7 +106,7 @@ export default function DatasetDetailsPage() {
     if (!token || !id) return
     setIsFetchingChunks(true)
     try {
-      const url = new URL(`http://localhost:8000/api/documents/${id}/chunks`)
+      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}/chunks`)
       url.searchParams.append("page", page.toString())
       url.searchParams.append("limit", chunkLimit.toString())
       if (search) url.searchParams.append("search", search)
@@ -144,7 +144,7 @@ export default function DatasetDetailsPage() {
     setIsGeneratingChunks(true)
     try {
       const endpoint = isRegenerating ? "rechunk" : "chunk"
-      const res = await fetch(`http://localhost:8000/api/documents/${id}/${endpoint}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}/${endpoint}`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -177,7 +177,7 @@ export default function DatasetDetailsPage() {
   const handleDeleteChunks = async () => {
     if (!confirm("Are you sure you want to delete all chunks?")) return
     try {
-      const res = await fetch(`http://localhost:8000/api/documents/${id}/chunks`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}/chunks`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       })
@@ -195,7 +195,7 @@ export default function DatasetDetailsPage() {
     if (!token || !id) return
     setIsFetchingEmbeddings(true)
     try {
-      const url = new URL(`http://localhost:8000/api/documents/${id}/embeddings`)
+      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}/embeddings`)
       url.searchParams.append("page", page.toString())
       url.searchParams.append("limit", embeddingLimit.toString())
       
@@ -218,7 +218,7 @@ export default function DatasetDetailsPage() {
   const fetchEmbeddingStatus = async () => {
     if (!token || !id) return
     try {
-      const res = await fetch(`http://localhost:8000/api/documents/${id}/embeddings/status`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}/embeddings/status`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
       if (res.ok) {
@@ -236,7 +236,7 @@ export default function DatasetDetailsPage() {
   const fetchIndexStatus = async () => {
     if (!token || !id) return
     try {
-      const res = await fetch(`http://localhost:8000/api/documents/${id}/index/status`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}/index/status`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
       if (res.ok) {
@@ -255,7 +255,7 @@ export default function DatasetDetailsPage() {
     setIsIndexing(true)
     try {
       const endpoint = isReindexing ? "reindex" : "index"
-      const res = await fetch(`http://localhost:8000/api/documents/${id}/${endpoint}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}/${endpoint}`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -281,7 +281,7 @@ export default function DatasetDetailsPage() {
   const handleDeleteIndex = async () => {
     if (!confirm("Are you sure you want to remove this document from the vector index?")) return
     try {
-      const res = await fetch(`http://localhost:8000/api/documents/${id}/index`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}/index`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       })
@@ -339,7 +339,7 @@ export default function DatasetDetailsPage() {
     setIsGeneratingEmbeddings(true)
     try {
       const endpoint = isRegenerating ? "regenerate" : "generate"
-      const res = await fetch(`http://localhost:8000/api/documents/${id}/embeddings/${endpoint}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}/embeddings/${endpoint}`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -371,7 +371,7 @@ export default function DatasetDetailsPage() {
   const handleDeleteEmbeddings = async () => {
     if (!confirm("Are you sure you want to delete all embeddings?")) return
     try {
-      const res = await fetch(`http://localhost:8000/api/documents/${id}/embeddings`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}/embeddings`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       })
@@ -389,7 +389,7 @@ export default function DatasetDetailsPage() {
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this dataset? This action cannot be undone.")) return
     try {
-      await fetch(`http://localhost:8000/api/documents/${id}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       })

@@ -56,7 +56,7 @@ export default function ChatPage() {
 
   const fetchDatasets = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/documents?limit=100", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents?limit=100`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
       if (res.ok) {
@@ -68,7 +68,7 @@ export default function ChatPage() {
   
   const fetchSuggestions = async (datasetId: string) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/chat/suggestions?dataset_id=${datasetId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/chat/suggestions?dataset_id=${datasetId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
       if (res.ok) {
@@ -93,7 +93,7 @@ export default function ChatPage() {
 
   const fetchSessions = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/chat/history", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/chat/history`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
       if (res.ok) {
@@ -110,7 +110,7 @@ export default function ChatPage() {
       return
     }
     try {
-      const res = await fetch(`http://localhost:8000/api/chat/sessions/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/chat/sessions/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -129,7 +129,7 @@ export default function ChatPage() {
 
   const fetchSessionHistory = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/chat/history/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/chat/history/${id}`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
       if (res.ok) {
@@ -159,7 +159,7 @@ export default function ChatPage() {
     setIsLoading(true)
 
     try {
-      const res = await fetch("http://localhost:8000/api/chat", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

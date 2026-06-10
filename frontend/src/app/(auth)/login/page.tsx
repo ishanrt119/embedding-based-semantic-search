@@ -23,7 +23,7 @@ export default function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      const res = await fetch("http://localhost:8000/api/auth/login", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
@@ -34,7 +34,7 @@ export default function LoginPage() {
         throw new Error(data.detail || "Login failed")
       }
 
-      const meRes = await fetch("http://localhost:8000/api/auth/me", {
+      const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/auth/me`, {
         headers: { "Authorization": `Bearer ${data.access_token}` }
       })
       
@@ -62,7 +62,7 @@ export default function LoginPage() {
         <div className="relative z-10 flex flex-col h-full justify-between">
           <Link href="/" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">A</div>
-            <span className="font-bold text-lg tracking-tight text-gray-900">Aether</span>
+            <span className="font-bold text-lg tracking-tight text-gray-900">DocIntel</span>
           </Link>
 
           <div className="max-w-lg space-y-8 my-auto py-12">
@@ -110,7 +110,7 @@ export default function LoginPage() {
           </div>
 
           <div className="text-sm text-gray-500 flex items-center justify-between mt-auto">
-            <span>© 2026 Aether Search Inc.</span>
+            <span>© 2026 DocIntel Search Inc.</span>
             <div className="flex gap-4">
               <Link href="/privacy" className="hover:text-gray-900">Privacy</Link>
               <Link href="/terms" className="hover:text-gray-900">Terms</Link>
@@ -127,12 +127,12 @@ export default function LoginPage() {
           {/* Mobile Header */}
           <Link href="/" className="lg:hidden flex items-center justify-center gap-2 mb-10 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">A</div>
-            <span className="font-bold text-lg tracking-tight text-gray-900">Aether</span>
+            <span className="font-bold text-lg tracking-tight text-gray-900">DocIntel</span>
           </Link>
 
           <div className="mb-8">
             <h2 className="text-2xl font-bold tracking-tight text-gray-900">Welcome back</h2>
-            <p className="text-sm text-gray-500 mt-2">Sign in to your Aether enterprise workspace.</p>
+            <p className="text-sm text-gray-500 mt-2">Sign in to your DocIntel enterprise workspace.</p>
           </div>
 
           {error && (
@@ -203,6 +203,10 @@ export default function LoginPage() {
             <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> Secure Auth</span>
             <span className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> Encrypted Storage</span>
             <span className="flex items-center gap-1.5"><Database className="w-3.5 h-3.5" /> Enterprise Search</span>
+          </div>
+
+          <div className="mt-8 text-center">
+            <p className="text-[10px] text-gray-400">Built with ❤️ by Ishan Toraskar</p>
           </div>
 
         </div>

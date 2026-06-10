@@ -1,18 +1,22 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database.mongodb import db_client
 from vectorstore.index_manager import index_manager
 
 app = FastAPI(
-    title="AI Semantic Search & RAG Platform",
-    description="Backend API for document indexing, semantic search, and RAG.",
+    title="DocIntel",
+    description="Search, Chat, Compare, and Generate Insights from Your Documents.",
     version="1.0.0"
 )
 
 # CORS setup
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+allow_origins = [url.strip() for url in frontend_url.split(",")] if frontend_url else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,7 +33,27 @@ async def shutdown():
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the AI Semantic Search & RAG Platform API"}
+    return {"message": "Welcome to the DocIntel API"}
+
+@app.get("/health")
+async def health_check():
+    mongodb_ok = False
+    try:
+        if db_client.client:
+            await db_client.client.admin.command('ping')
+            mongodb_ok = True
+    except Exception:
+        pass
+
+    groq_ok = bool(os.getenv("GROQ_API_KEY"))
+    vector_store_ok = index_manager is not None
+
+    return {
+        "status": "healthy" if mongodb_ok and groq_ok and vector_store_ok else "unhealthy",
+        "mongodb": mongodb_ok,
+        "groq": groq_ok,
+        "vector_store": vector_store_ok
+    }
 
 from api.auth import router as auth_router
 from api.documents import router as documents_router

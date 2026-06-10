@@ -13,7 +13,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     if (token) {
-      fetch("http://localhost:8000/api/auth/me/dashboard", {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/auth/me/dashboard`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
       .then(res => res.json())

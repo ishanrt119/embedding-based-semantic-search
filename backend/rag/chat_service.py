@@ -55,6 +55,12 @@ class ChatService:
         
         total_time = (time.time() - start_time) * 1000
         
+        from database.repositories.usage_repository import UsageRepository
+        try:
+            await UsageRepository.increment_search(user_id=user_id)
+        except Exception:
+            pass
+
         # 7. Build Transparency Object
         transparency = {
             "sources_used": len(citations),

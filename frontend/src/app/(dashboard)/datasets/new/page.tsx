@@ -43,7 +43,7 @@ export default function NewDatasetPage() {
     setError("")
 
     try {
-      const res = await fetch("http://localhost:8000/api/documents/upload", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents/upload`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` },
         body: formData

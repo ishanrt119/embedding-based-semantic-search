@@ -43,6 +43,12 @@ async def synthesize_info(req: SynthesisRequest, user_id: str = Depends(get_curr
 
 @router.post("/report")
 async def generate_report(req: ReportRequest, user_id: str = Depends(get_current_user_id)):
+    from database.repositories.usage_repository import UsageRepository
+    try:
+        await UsageRepository.increment_report(user_id)
+    except Exception:
+        pass
+
     markdown_content = await intelligence_service.generate_report(req.report_type, req.document_ids, user_id, req.topic)
     
     if req.export_format == "pdf":

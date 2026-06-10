@@ -20,8 +20,8 @@ export default function DashboardPage() {
     if (!token) return;
 
     Promise.all([
-      fetch("http://localhost:8000/api/auth/me/dashboard", { headers: { "Authorization": `Bearer ${token}` } }),
-      fetch("http://localhost:8000/api/documents", { headers: { "Authorization": `Bearer ${token}` } })
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/auth/me/dashboard`, { headers: { "Authorization": `Bearer ${token}` } }),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/documents`, { headers: { "Authorization": `Bearer ${token}` } })
     ])
     .then(async ([statsRes, docsRes]) => {
       if (statsRes.ok) setStats(await statsRes.json())
@@ -57,10 +57,10 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: "Total Documents", value: stats?.documents ?? 0, icon: FileText },
-          { label: "Generated Chunks", value: stats?.chunks ?? 0, icon: Database },
-          { label: "Vector Embeddings", value: stats?.embeddings ?? 0, icon: Database },
-          { label: "Total Searches", value: stats?.searches ?? 0, icon: Activity }
+          { label: "Documents", value: stats?.documents ?? 0, icon: FileText },
+          { label: "Processed Documents", value: stats?.processed_documents ?? 0, icon: Database },
+          { label: "Search Queries", value: stats?.search_queries ?? 0, icon: Activity },
+          { label: "Reports Generated", value: stats?.reports_generated ?? 0, icon: FileText }
         ].map((stat, i) => (
           <Card key={i} className="shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">

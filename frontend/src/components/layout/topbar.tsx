@@ -40,6 +40,9 @@ export function Topbar() {
         <div className="flex-1" />
 
         <div className="flex items-center gap-x-4 lg:gap-x-6">
+          <a href="/support" className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-md transition-colors border border-amber-200 shadow-sm">
+            ☕ Support
+          </a>
           <ThemeToggle />
           
           {/* User Menu */}

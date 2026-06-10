@@ -138,25 +138,20 @@ async def logout():
 async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
     
-    # Get total documents
+    # 1. Get total documents
     doc_count = await DocumentRepository.count_documents_by_user(user_id)
     
-    # Get user documents to query chunks
-    user_docs = await DocumentRepository.get_documents_by_user(user_id, skip=0, limit=10000)
-    doc_ids = [doc["id"] for doc in user_docs]
+    # 2. Get processed documents
+    # Documents that have index_status == "completed" or embedding_status == "completed"
+    processed_count = await db_client.db.documents.count_documents({"user_id": user_id, "index_status": "completed"})
     
-    # Get total chunks
-    chunk_count = await db_client.db.chunks.count_documents({"document_id": {"$in": doc_ids}})
-    
-    # Get total embeddings
-    embedding_count = await db_client.db.embeddings.count_documents({"document_id": {"$in": doc_ids}})
-    
-    # Get total searches
-    search_count = await db_client.db.search_history.count_documents({"user_id": user_id})
+    # 3. Usage Stats
+    from database.repositories.usage_repository import UsageRepository
+    usage_stats = await UsageRepository.get_user_stats(user_id)
     
     return {
         "documents": doc_count,
-        "chunks": chunk_count,
-        "embeddings": embedding_count,
-        "searches": search_count
+        "processed_documents": processed_count,
+        "search_queries": usage_stats["search_queries"],
+        "reports_generated": usage_stats["reports_generated"]
     }

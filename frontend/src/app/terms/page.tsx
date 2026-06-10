@@ -11,12 +11,12 @@ export default function TermsPage() {
         <div className="space-y-8 text-gray-700 leading-relaxed">
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3 text-left">1. Introduction</h2>
-            <p>Welcome to Aether. By accessing our platform, you agree to these Terms of Service. Please read them carefully. Aether provides an AI-powered semantic search and RAG (Retrieval-Augmented Generation) platform for enterprise document intelligence.</p>
+            <p>Welcome to DocIntel. By accessing our platform, you agree to these Terms of Service. Please read them carefully. DocIntel provides an AI-powered semantic search and RAG (Retrieval-Augmented Generation) platform for enterprise document intelligence.</p>
           </section>
           
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3 text-left">2. Acceptable Use</h2>
-            <p>You agree not to use the Aether platform to upload, store, or process any illegal, harmful, or sensitive data without proper authorization. You maintain full ownership of the documents you upload.</p>
+            <p>You agree not to use the DocIntel platform to upload, store, or process any illegal, harmful, or sensitive data without proper authorization. You maintain full ownership of the documents you upload.</p>
           </section>
           
           <section>
@@ -26,7 +26,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3 text-left">4. Limitation of Liability</h2>
-            <p>Aether is provided "as is". While our semantic search algorithms strive for high accuracy, we do not guarantee the completeness or absolute correctness of AI-generated answers or retrievals.</p>
+            <p>DocIntel is provided "as is". While our semantic search algorithms strive for high accuracy, we do not guarantee the completeness or absolute correctness of AI-generated answers or retrievals.</p>
           </section>
         </div>
       </div>

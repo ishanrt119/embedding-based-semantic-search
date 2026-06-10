@@ -31,6 +31,13 @@ async def process_chat(msg: ChatMessage, user_id: str = Depends(get_current_user
             conversation_id=msg.conversation_id,
             dataset_id=msg.dataset_id
         )
+        
+        from database.repositories.usage_repository import UsageRepository
+        try:
+            await UsageRepository.increment_search(user_id)
+        except Exception:
+            pass
+            
         return result
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))

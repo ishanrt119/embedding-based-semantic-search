@@ -36,6 +36,12 @@ async def semantic_search_endpoint(query: SemanticSearchQuery, user_id: str = De
     latency = (time.time() - start_time) * 1000
     await SearchRepository.log_search(user_id, query.query, "semantic", len(results), latency)
     
+    from database.repositories.usage_repository import UsageRepository
+    try:
+        await UsageRepository.increment_search(user_id)
+    except Exception:
+        pass
+    
     return {
         "query": query.query,
         "results": results,
@@ -61,6 +67,12 @@ async def unified_search(query: SearchQuery, user_id: str = Depends(get_current_
         
     latency = (time.time() - start_time) * 1000
     await SearchRepository.log_search(user_id, query.query, query.search_type, len(results), latency)
+    
+    from database.repositories.usage_repository import UsageRepository
+    try:
+        await UsageRepository.increment_search(user_id)
+    except Exception:
+        pass
     
     return {
         "query": query.query,
