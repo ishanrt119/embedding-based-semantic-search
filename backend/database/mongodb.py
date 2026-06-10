@@ -2,8 +2,6 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from services.logger import logger
 from dotenv import load_dotenv
-import certifi
-
 load_dotenv()
 
 class MongoDBClient:
