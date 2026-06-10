@@ -26,11 +26,47 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [activeSources, setActiveSources] = useState<any[]>([])
   
+  const [datasets, setDatasets] = useState<any[]>([])
+  const [selectedDatasetId, setSelectedDatasetId] = useState<string>("all")
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
+  
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (token) fetchSessions()
+    if (token) {
+      fetchSessions()
+      fetchDatasets()
+    }
   }, [token])
+  
+  useEffect(() => {
+    if (selectedDatasetId && selectedDatasetId !== "all") {
+      fetchSuggestions(selectedDatasetId)
+    } else {
+      setSuggestedQuestions([])
+    }
+  }, [selectedDatasetId])
+
+  const fetchDatasets = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/api/documents/datasets", {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+      if (res.ok) setDatasets(await res.json())
+    } catch (err) { console.error(err) }
+  }
+  
+  const fetchSuggestions = async (datasetId: string) => {
+    try {
+      const res = await fetch(`http://localhost:8000/api/chat/suggestions?dataset_id=${datasetId}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setSuggestedQuestions(data.suggestions || [])
+      }
+    } catch (err) { console.error(err) }
+  }
 
   useEffect(() => {
     if (activeSession && token) {
@@ -47,7 +83,7 @@ export default function ChatPage() {
 
   const fetchSessions = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/rag/history", {
+      const res = await fetch("http://localhost:8000/api/chat/history", {
         headers: { "Authorization": `Bearer ${token}` }
       })
       if (res.ok) {
@@ -60,7 +96,7 @@ export default function ChatPage() {
 
   const fetchSessionHistory = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/rag/history/${id}`, {
+      const res = await fetch(`http://localhost:8000/api/chat/history/${id}`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
       if (res.ok) {
@@ -90,15 +126,16 @@ export default function ChatPage() {
     setIsLoading(true)
 
     try {
-      const res = await fetch("http://localhost:8000/api/rag", {
+      const res = await fetch("http://localhost:8000/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ 
-          query: userMessage,
-          session_id: activeSession 
+          message: userMessage,
+          dataset_id: selectedDatasetId === "all" ? null : selectedDatasetId,
+          conversation_id: activeSession 
         })
       })
       
@@ -107,12 +144,12 @@ export default function ChatPage() {
         setMessages(prev => [...prev, { 
           role: "assistant", 
           content: data.answer,
-          sources: data.sources
+          sources: data.citations
         }])
-        setActiveSources(data.sources || [])
+        setActiveSources(data.citations || [])
         
-        if (!activeSession && data.session_id) {
-          setActiveSession(data.session_id)
+        if (!activeSession && data.conversation_id) {
+          setActiveSession(data.conversation_id)
           fetchSessions()
         }
       }
@@ -160,6 +197,19 @@ export default function ChatPage() {
             ))
           )}
         </div>
+        <div className="p-3 border-t border-border bg-muted/30">
+          <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Dataset Scope</label>
+          <select 
+            value={selectedDatasetId}
+            onChange={(e) => setSelectedDatasetId(e.target.value)}
+            className="w-full bg-card border border-border rounded text-xs p-1.5 text-foreground focus:ring-1 focus:ring-blue-500 focus:outline-none"
+          >
+            <option value="all">All Datasets</option>
+            {datasets.map(d => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* 2. Center: Main Chat */}
@@ -169,7 +219,25 @@ export default function ChatPage() {
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground max-w-sm mx-auto text-center">
               <BookOpen className="w-8 h-8 mb-3 opacity-20" />
               <h2 className="text-sm font-semibold text-foreground mb-1">Research Assistant</h2>
-              <p className="text-xs leading-relaxed">Ask questions based on your embedded datasets. Responses will cite specific retrieved chunks.</p>
+              <p className="text-xs leading-relaxed mb-6">Ask questions based on your embedded datasets. Responses will cite specific retrieved chunks.</p>
+              
+              {suggestedQuestions.length > 0 && (
+                <div className="w-full max-w-sm mt-4 text-left">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 text-center">Suggested Questions</p>
+                  <div className="space-y-2">
+                    {suggestedQuestions.map((sq, idx) => (
+                      <button 
+                        key={idx}
+                        onClick={() => setInput(sq)}
+                        className="w-full text-left p-2.5 rounded border border-border bg-card hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-xs text-secondary-foreground transition-all flex items-center justify-between group"
+                      >
+                        <span className="truncate pr-2">{sq}</span>
+                        <Plus className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-6 max-w-2xl mx-auto w-full pb-6">
@@ -182,9 +250,23 @@ export default function ChatPage() {
                   }`}>
                     <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
                     {m.sources && m.sources.length > 0 && (
-                      <div className="mt-2.5 pt-2 border-t border-border flex items-center gap-1.5">
-                        <BookOpen className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-[10px] text-muted-foreground font-medium">References {m.sources.length} sources</span>
+                      <div className="mt-3 pt-2.5 border-t border-border/50">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <BookOpen className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Sources</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {m.sources.map((src, sIdx) => (
+                            <button
+                              key={sIdx}
+                              onClick={() => setActiveSources(m.sources || [])}
+                              className="text-[10px] bg-background/50 hover:bg-background border border-border px-2 py-1 rounded transition-colors text-secondary-foreground text-left max-w-[200px] truncate"
+                              title={`${src.document_name} (Page ${src.page_number})`}
+                            >
+                              <span className="font-medium">[{sIdx + 1}]</span> {src.document_name || "Unknown"} (Pg {src.page_number || "?"})
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -249,10 +331,10 @@ export default function ChatPage() {
               <div key={idx} className="bg-card rounded border border-border shadow-sm text-xs overflow-hidden">
                 <div className="bg-muted border-b border-border px-2.5 py-1.5 flex items-center justify-between">
                   <span className="font-medium text-secondary-foreground truncate w-3/4">
-                    {source.metadata?.document_id?.slice(0,8) || "Unknown Dataset"}
+                    {source.document_name || "Unknown Document"}
                   </span>
                   <span className="text-[9px] font-mono text-muted-foreground">
-                    ID:{source.metadata?.chunk_index ?? "?"}
+                    Pg:{source.page_number ?? "?"}
                   </span>
                 </div>
                 <div className="p-2.5 text-secondary-foreground leading-relaxed max-h-40 overflow-y-auto">
