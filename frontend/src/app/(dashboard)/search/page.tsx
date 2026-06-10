@@ -19,6 +19,8 @@ interface SearchResult {
   raw_distance?: number
   bm25_score?: number
   hybrid_score?: number
+  retrieval_score?: number
+  token_count?: number
   created_at: string
   document_name: string
 }
@@ -31,6 +33,7 @@ export default function SearchPage() {
   const [results, setResults] = useState<SearchResult[]>([])
   const [hasSearched, setHasSearched] = useState(false)
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null)
+  const [useAdvancedRetrieval, setUseAdvancedRetrieval] = useState(false)
   
   const [datasets, setDatasets] = useState<any[]>([])
   const [selectedDatasetId, setSelectedDatasetId] = useState<string>("all")
@@ -62,7 +65,8 @@ export default function SearchPage() {
     setSelectedResult(null)
 
     try {
-      const res = await fetch("http://localhost:8000/api/search", {
+      const endpoint = useAdvancedRetrieval ? "http://localhost:8000/api/retrieval" : "http://localhost:8000/api/search"
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -71,14 +75,14 @@ export default function SearchPage() {
         body: JSON.stringify({ 
           query, 
           top_k: 10,
-          search_type: searchMode,
+          search_type: useAdvancedRetrieval ? undefined : searchMode,
           dataset_id: selectedDatasetId === "all" ? null : selectedDatasetId
         })
       })
       
       const data = await res.json()
       if (res.ok) {
-        setResults(data.results || [])
+        setResults(useAdvancedRetrieval ? (data.contexts || []) : (data.results || []))
       }
     } catch (err) {
       console.error("Search failed", err)
@@ -104,7 +108,21 @@ export default function SearchPage() {
         </div>
 
         <div className="space-y-6">
-          <div>
+          <div className="pb-4 border-b border-border">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 block">Retrieval Engine</Label>
+            <label className="flex items-center gap-2.5 cursor-pointer group">
+              <input 
+                type="checkbox" 
+                checked={useAdvancedRetrieval}
+                onChange={(e) => setUseAdvancedRetrieval(e.target.checked)}
+                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-600"
+              />
+              <span className="text-secondary-foreground font-medium group-hover:text-foreground transition-colors">Use Advanced Retriever</span>
+            </label>
+            <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">Enables deduplication, token budgeting, and length re-ranking for optimal LLM context injection.</p>
+          </div>
+
+          <div className={useAdvancedRetrieval ? "opacity-50 pointer-events-none" : ""}>
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 block">Search Mode</Label>
             <div className="space-y-3 text-sm">
               <label className="flex items-center gap-2.5 cursor-pointer group">
@@ -226,7 +244,7 @@ export default function SearchPage() {
             </div>
           ) : (
             <div className="space-y-4 pb-20 max-w-4xl mx-auto">
-              <p className="text-sm text-muted-foreground font-medium mb-5 px-1">{results.length} results found for {searchMode} search</p>
+              <p className="text-sm text-muted-foreground font-medium mb-5 px-1">{results.length} results found {useAdvancedRetrieval ? "from Retriever Pipeline" : `for ${searchMode} search`}</p>
               {results.map((result, idx) => (
                 <div 
                   key={idx} 
@@ -242,20 +260,28 @@ export default function SearchPage() {
                       <FileText className="w-4 h-4 text-blue-600" />
                       {result.document_name}
                     </div>
-                    {searchMode === "semantic" && result.similarity_score !== undefined && (
-                      <span className="text-[11px] font-mono font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded-md border border-blue-200 shadow-sm" title={`Raw Distance: ${result.raw_distance}`}>
-                        {(result.similarity_score * 100).toFixed(1)}% Match
+                    {useAdvancedRetrieval && result.retrieval_score !== undefined ? (
+                      <span className="text-[11px] font-mono font-medium bg-green-100 text-green-700 px-2 py-1 rounded-md border border-green-200 shadow-sm">
+                        Retrieval Score: {result.retrieval_score.toFixed(4)}
                       </span>
-                    )}
-                    {searchMode === "keyword" && result.bm25_score !== undefined && (
-                      <span className="text-[11px] font-mono font-medium bg-orange-100 text-orange-700 px-2 py-1 rounded-md border border-orange-200 shadow-sm">
-                        Score: {result.bm25_score.toFixed(2)}
-                      </span>
-                    )}
-                    {searchMode === "hybrid" && result.hybrid_score !== undefined && (
-                      <span className="text-[11px] font-mono font-medium bg-purple-100 text-purple-700 px-2 py-1 rounded-md border border-purple-200 shadow-sm" title={`Semantic: ${(result.similarity_score! * 100).toFixed(1)}%, Keyword: ${result.bm25_score!.toFixed(2)}`}>
-                        Hybrid: {result.hybrid_score.toFixed(4)}
-                      </span>
+                    ) : (
+                      <>
+                        {searchMode === "semantic" && result.similarity_score !== undefined && (
+                          <span className="text-[11px] font-mono font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded-md border border-blue-200 shadow-sm" title={`Raw Distance: ${result.raw_distance}`}>
+                            {(result.similarity_score * 100).toFixed(1)}% Match
+                          </span>
+                        )}
+                        {searchMode === "keyword" && result.bm25_score !== undefined && (
+                          <span className="text-[11px] font-mono font-medium bg-orange-100 text-orange-700 px-2 py-1 rounded-md border border-orange-200 shadow-sm">
+                            Score: {result.bm25_score.toFixed(2)}
+                          </span>
+                        )}
+                        {searchMode === "hybrid" && result.hybrid_score !== undefined && (
+                          <span className="text-[11px] font-mono font-medium bg-purple-100 text-purple-700 px-2 py-1 rounded-md border border-purple-200 shadow-sm" title={`Semantic: ${(result.similarity_score! * 100).toFixed(1)}%, Keyword: ${result.bm25_score!.toFixed(2)}`}>
+                            Hybrid: {result.hybrid_score.toFixed(4)}
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                   <p className="text-foreground leading-relaxed">
@@ -302,6 +328,24 @@ export default function SearchPage() {
                   <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Page Number</span>
                   <span className="text-foreground font-bold">{selectedResult.page_number ?? "Unknown"}</span>
                 </div>
+                
+                {selectedResult.retrieval_score !== undefined && (
+                  <div className="flex justify-between items-center pb-3 border-b border-border">
+                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Final Retrieval Score</span>
+                    <span className="text-green-700 font-bold bg-green-50 px-2 py-0.5 rounded border border-green-100">
+                      {selectedResult.retrieval_score.toFixed(4)}
+                    </span>
+                  </div>
+                )}
+                {selectedResult.token_count !== undefined && (
+                  <div className="flex justify-between items-center pb-3 border-b border-border">
+                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Token Count</span>
+                    <span className="text-gray-700 font-bold bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
+                      {selectedResult.token_count}
+                    </span>
+                  </div>
+                )}
+
                 {selectedResult.similarity_score !== undefined && selectedResult.similarity_score > 0 && (
                   <div className="flex justify-between items-center pb-3 border-b border-border">
                     <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Semantic Match</span>

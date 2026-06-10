@@ -31,9 +31,14 @@ async def shutdown():
 def read_root():
     return {"message": "Welcome to the AI Semantic Search & RAG Platform API"}
 
-from api import auth, documents, search, rag
+from api.auth import router as auth_router
+from api.documents import router as documents_router
+from api.search import router as search_router
+from api.retrieval import router as retrieval_router
+from api import rag
 
-app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
-app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
-app.include_router(search.router, prefix="/api/search", tags=["search"])
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(documents_router, prefix="/api/documents", tags=["documents"])
+app.include_router(search_router, prefix="/api/search", tags=["search"])
+app.include_router(retrieval_router, prefix="/api/retrieval", tags=["retrieval"])
 app.include_router(rag.router, prefix="/api/rag", tags=["rag"])
