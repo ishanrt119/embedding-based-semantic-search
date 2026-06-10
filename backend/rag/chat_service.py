@@ -57,6 +57,16 @@ class ChatService:
         total_time = (time.time() - start_time) * 1000
         
         # 7. Log Analytics
+        avg_confidence = sum(c.get("confidence", 0) for c in citations) / len(citations) if citations else 0.0
+        
+        from database.repositories.citation_analytics_repository import CitationAnalyticsRepository
+        await CitationAnalyticsRepository.log_citations(
+            user_id=user_id,
+            question=message,
+            citations=citations,
+            avg_confidence=avg_confidence
+        )
+        
         await ChatAnalyticsRepository.log_analytics(
             user_id=user_id,
             question=message,
@@ -67,9 +77,20 @@ class ChatService:
             total_latency_ms=total_time
         )
         
+        # 8. Build Transparency Object
+        transparency = {
+            "sources_used": len(citations),
+            "retrieved_chunks_count": len(contexts),
+            "context_tokens": sum(c.get("token_count", 0) for c in contexts),
+            "generation_time_ms": round(gen_time, 2),
+            "retrieval_time_ms": round(retrieval_time, 2),
+            "all_contexts": contexts
+        }
+        
         return {
             "answer": validated_answer,
             "citations": citations,
+            "transparency": transparency,
             "conversation_id": conversation_id
         }
 

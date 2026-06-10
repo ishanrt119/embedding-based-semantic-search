@@ -9,6 +9,7 @@ interface Message {
   role: "user" | "assistant"
   content: string
   sources?: any[]
+  transparency?: any
 }
 
 interface ChatSession {
@@ -29,6 +30,8 @@ export default function ChatPage() {
   const [datasets, setDatasets] = useState<any[]>([])
   const [selectedDatasetId, setSelectedDatasetId] = useState<string>("all")
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
+  
+  const [explorerContexts, setExplorerContexts] = useState<any[] | null>(null)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -144,7 +147,8 @@ export default function ChatPage() {
         setMessages(prev => [...prev, { 
           role: "assistant", 
           content: data.answer,
-          sources: data.citations
+          sources: data.citations,
+          transparency: data.transparency
         }])
         setActiveSources(data.citations || [])
         
@@ -253,20 +257,55 @@ export default function ChatPage() {
                       <div className="mt-3 pt-2.5 border-t border-border/50">
                         <div className="flex items-center gap-1.5 mb-2">
                           <BookOpen className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Sources</span>
+                          <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Sources Grouped By Document</span>
                         </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {m.sources.map((src, sIdx) => (
-                            <button
-                              key={sIdx}
-                              onClick={() => setActiveSources(m.sources || [])}
-                              className="text-[10px] bg-background/50 hover:bg-background border border-border px-2 py-1 rounded transition-colors text-secondary-foreground text-left max-w-[200px] truncate"
-                              title={`${src.document_name} (Page ${src.page_number})`}
-                            >
-                              <span className="font-medium">[{sIdx + 1}]</span> {src.document_name || "Unknown"} (Pg {src.page_number || "?"})
-                            </button>
+                        <div className="flex flex-col gap-2">
+                          {Object.entries(
+                            m.sources.reduce((acc, src, i) => {
+                              const doc = src.document_name || "Unknown Document";
+                              if (!acc[doc]) acc[doc] = [];
+                              acc[doc].push({...src, oIdx: i});
+                              return acc;
+                            }, {} as Record<string, any[]>)
+                          ).map(([docName, docSources], dIdx) => (
+                            <div key={dIdx} className="flex flex-col gap-1">
+                              <span className="text-[10px] font-semibold text-foreground/80">{docName}</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {(docSources as any[]).map((src: any) => (
+                                  <button
+                                    key={src.oIdx}
+                                    onClick={() => setActiveSources(m.sources || [])}
+                                    className="text-[10px] flex items-center gap-1.5 bg-background/50 hover:bg-background border border-border px-2 py-1 rounded transition-colors text-secondary-foreground"
+                                  >
+                                    <span className="font-medium">[{src.oIdx + 1}] Pg {src.page_number || "?"}</span>
+                                    {src.confidence && (
+                                      <span className="text-[9px] bg-green-100 text-green-700 px-1 rounded-sm font-semibold border border-green-200">
+                                        {src.confidence}%
+                                      </span>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           ))}
                         </div>
+                      </div>
+                    )}
+                    {m.transparency && (
+                      <div className="mt-3 pt-2 border-t border-border/30 flex items-center justify-between text-[9px] text-muted-foreground">
+                        <div className="flex items-center gap-3">
+                          <span>Generated in {m.transparency.generation_time_ms}ms</span>
+                          <span>Retrieved in {m.transparency.retrieval_time_ms}ms</span>
+                          <span>Context: {m.transparency.context_tokens} tokens</span>
+                        </div>
+                        {m.transparency.all_contexts && (
+                          <button 
+                            onClick={() => setExplorerContexts(m.transparency.all_contexts)}
+                            className="hover:text-blue-600 transition-colors font-medium underline underline-offset-2"
+                          >
+                            Explore {m.transparency.retrieved_chunks_count} retrieved chunks
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -338,13 +377,60 @@ export default function ChatPage() {
                   </span>
                 </div>
                 <div className="p-2.5 text-secondary-foreground leading-relaxed max-h-40 overflow-y-auto">
-                  {source.content}
+                  {source.evidence_highlight ? (
+                    (() => {
+                      const text = source.content || "";
+                      const h = source.evidence_highlight;
+                      const idx = text.toLowerCase().indexOf(h.toLowerCase());
+                      if (idx === -1) return text;
+                      return (
+                        <>
+                          {text.substring(0, idx)}
+                          <mark className="bg-yellow-200 text-black px-0.5 rounded shadow-sm">{text.substring(idx, idx + h.length)}</mark>
+                          {text.substring(idx + h.length)}
+                        </>
+                      )
+                    })()
+                  ) : source.content}
                 </div>
               </div>
             ))
           )}
         </div>
       </div>
+
+      {/* 4. Source Explorer Modal */}
+      {explorerContexts && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-6">
+          <div className="bg-card w-full max-w-4xl max-h-[85vh] rounded-xl border border-border shadow-lg flex flex-col overflow-hidden">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted/30">
+              <h2 className="text-sm font-semibold flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-blue-600" />
+                Source Explorer <span className="text-muted-foreground font-normal">({explorerContexts.length} total chunks retrieved)</span>
+              </h2>
+              <button onClick={() => setExplorerContexts(null)} className="text-muted-foreground hover:text-foreground text-sm font-medium px-3 py-1 rounded border border-border bg-background">Close</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {explorerContexts.map((ctx: any, idx: number) => (
+                <div key={idx} className="p-4 rounded-lg border border-border bg-background">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <span className="font-semibold text-foreground text-sm">{ctx.document_name || "Unknown Document"}</span>
+                      <span className="ml-2 text-xs text-muted-foreground font-mono">Page {ctx.page_number}</span>
+                    </div>
+                    {ctx.similarity_score !== undefined && (
+                      <span className="text-[10px] font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded border border-blue-200">
+                        Match: {(ctx.similarity_score * 100).toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-secondary-foreground leading-relaxed">{ctx.content}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )
