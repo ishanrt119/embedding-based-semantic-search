@@ -126,9 +126,9 @@ class BM25IndexManager:
             if not doc_metadata or doc_metadata.get("user_id") != user_id:
                 continue
                 
-            doc_dataset_id = doc_metadata.get("dataset_id")
+            doc_dataset_id = doc_metadata.get("id")
             
-            if dataset_id and dataset_id != "all" and doc_dataset_id != dataset_id:
+            if dataset_id and dataset_id != "all" and document_id != dataset_id:
                 continue
                 
             chunk_text = chunk_metadata.get("content", "")

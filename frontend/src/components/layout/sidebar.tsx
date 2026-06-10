@@ -3,13 +3,14 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
-import { LayoutDashboard, Database, Search, MessageSquare, BarChart3, UserCircle, ChevronsUpDown, LogOut } from "lucide-react"
+import { LayoutDashboard, Database, Search, MessageSquare, BarChart3, UserCircle, ChevronsUpDown, LogOut, BrainCircuit } from "lucide-react"
 
 const navigation = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
   { name: "Datasets", href: "/datasets", icon: Database },
   { name: "Search", href: "/search", icon: Search },
   { name: "Chat", href: "/chat", icon: MessageSquare },
+  { name: "Intelligence", href: "/intelligence", icon: BrainCircuit },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
 ]
 

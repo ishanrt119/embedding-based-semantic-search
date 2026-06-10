@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useAuth } from "@/components/auth-provider"
-import { Send, Plus, MessageSquare, BookOpen, Loader2, FileText } from "lucide-react"
+import { Send, Plus, MessageSquare, BookOpen, Loader2, FileText, Pencil, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface Message {
@@ -16,6 +16,7 @@ interface ChatSession {
   id: string
   created_at: string
   updated_at: string
+  title?: string
 }
 
 export default function ChatPage() {
@@ -34,6 +35,9 @@ export default function ChatPage() {
   const [explorerContexts, setExplorerContexts] = useState<any[] | null>(null)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState("")
 
   useEffect(() => {
     if (token) {
@@ -52,10 +56,13 @@ export default function ChatPage() {
 
   const fetchDatasets = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/documents/datasets", {
+      const res = await fetch("http://localhost:8000/api/documents?limit=100", {
         headers: { "Authorization": `Bearer ${token}` }
       })
-      if (res.ok) setDatasets(await res.json())
+      if (res.ok) {
+        const d = await res.json()
+        setDatasets(d.data || [])
+      }
     } catch (err) { console.error(err) }
   }
   
@@ -91,6 +98,29 @@ export default function ChatPage() {
       })
       if (res.ok) {
         setSessions(await res.json())
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const renameSession = async (id: string) => {
+    if (!editTitle.trim()) {
+      setEditingSessionId(null)
+      return
+    }
+    try {
+      const res = await fetch(`http://localhost:8000/api/chat/sessions/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ title: editTitle })
+      })
+      if (res.ok) {
+        setEditingSessionId(null)
+        fetchSessions()
       }
     } catch (err) {
       console.error(err)
@@ -184,20 +214,44 @@ export default function ChatPage() {
             <p className="text-[11px] text-center text-muted-foreground mt-4">No recent chats</p>
           ) : (
             sessions.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => setActiveSession(s.id)}
-                className={`w-full text-left px-2.5 py-2 rounded text-xs transition-colors flex items-center gap-2.5 ${
-                  activeSession === s.id 
-                    ? 'bg-blue-50 text-blue-600 font-medium' 
-                    : 'text-secondary-foreground hover:bg-muted'
-                }`}
-              >
-                <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate flex-1">
-                  Chat {new Date(s.created_at).toLocaleDateString()}
-                </span>
-              </button>
+              editingSessionId === s.id ? (
+                <div key={s.id} className="w-full flex items-center gap-1 px-2.5 py-2 rounded text-xs bg-muted border border-border">
+                  <input
+                    autoFocus
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") renameSession(s.id); if (e.key === "Escape") setEditingSessionId(null) }}
+                    className="flex-1 bg-background border border-border rounded px-1.5 py-0.5 outline-none focus:border-blue-400"
+                  />
+                  <button onClick={() => renameSession(s.id)} className="text-green-600 hover:bg-green-100 p-1 rounded"><Check className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => setEditingSessionId(null)} className="text-red-600 hover:bg-red-100 p-1 rounded"><X className="w-3.5 h-3.5" /></button>
+                </div>
+              ) : (
+                <button
+                  key={s.id}
+                  onClick={() => setActiveSession(s.id)}
+                  className={`group w-full text-left px-2.5 py-2 rounded text-xs transition-colors flex items-center gap-2.5 ${
+                    activeSession === s.id 
+                      ? 'bg-blue-50 text-blue-600 font-medium' 
+                      : 'text-secondary-foreground hover:bg-muted'
+                  }`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate flex-1">
+                    {s.title || `Chat ${new Date(s.created_at).toLocaleDateString()}`}
+                  </span>
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditingSessionId(s.id)
+                      setEditTitle(s.title || `Chat ${new Date(s.created_at).toLocaleDateString()}`)
+                    }}
+                    className="opacity-0 group-hover:opacity-100 hover:bg-black/10 p-1 rounded transition-opacity"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </div>
+                </button>
+              )
             ))
           )}
         </div>
@@ -210,7 +264,7 @@ export default function ChatPage() {
           >
             <option value="all">All Datasets</option>
             {datasets.map(d => (
-              <option key={d.id} value={d.id}>{d.name}</option>
+              <option key={d.id} value={d.id}>{d.filename}</option>
             ))}
           </select>
         </div>

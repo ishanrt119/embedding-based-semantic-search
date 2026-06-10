@@ -46,3 +46,10 @@ class ChatRepository:
                 "$set": {"updated_at": datetime.utcnow()}
             }
         )
+
+    @staticmethod
+    async def rename_session(session_id: str, title: str) -> None:
+        await ChatRepository.get_collection().update_one(
+            {"id": session_id},
+            {"$set": {"title": title, "updated_at": datetime.utcnow()}}
+        )

@@ -2,7 +2,6 @@ import time
 from typing import Dict, Any, Optional
 from retrieval_engine.retrieval_service import retrieval_service
 from database.repositories.chat_repository import ChatRepository
-from database.repositories.chat_analytics_repository import ChatAnalyticsRepository
 
 from .prompt_builder import build_messages
 from .rag_service import rag_service
@@ -56,28 +55,7 @@ class ChatService:
         
         total_time = (time.time() - start_time) * 1000
         
-        # 7. Log Analytics
-        avg_confidence = sum(c.get("confidence", 0) for c in citations) / len(citations) if citations else 0.0
-        
-        from database.repositories.citation_analytics_repository import CitationAnalyticsRepository
-        await CitationAnalyticsRepository.log_citations(
-            user_id=user_id,
-            question=message,
-            citations=citations,
-            avg_confidence=avg_confidence
-        )
-        
-        await ChatAnalyticsRepository.log_analytics(
-            user_id=user_id,
-            question=message,
-            answer_length=len(validated_answer),
-            retrieval_time_ms=retrieval_time,
-            generation_time_ms=gen_time,
-            citation_count=len(citations),
-            total_latency_ms=total_time
-        )
-        
-        # 8. Build Transparency Object
+        # 7. Build Transparency Object
         transparency = {
             "sources_used": len(citations),
             "retrieved_chunks_count": len(contexts),

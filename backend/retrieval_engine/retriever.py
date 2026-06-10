@@ -5,7 +5,6 @@ from search_engine.hybrid_search import hybrid_search
 from .deduplicator import deduplicate_chunks
 from .reranker import rerank_context
 from .context_builder import build_context_packages
-from database.repositories.retrieval_repository import RetrievalRepository
 
 class Retriever:
     @staticmethod
@@ -57,16 +56,7 @@ class Retriever:
         total_tokens = sum(c.get("token_count", 0) for c in final_contexts)
         avg_score = sum(c.get("retrieval_score", 0.0) for c in final_contexts) / len(final_contexts) if final_contexts else 0.0
         
-        # Async Logging to MongoDB
-        await RetrievalRepository.log_retrieval(
-            user_id=user_id,
-            query=query,
-            dataset_id=dataset_id,
-            returned_chunks=len(final_contexts),
-            total_tokens=total_tokens,
-            latency_ms=latency,
-            avg_score=avg_score
-        )
+        # Async Logging to MongoDB removed
         
         return {
             "query": query,

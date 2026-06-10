@@ -16,6 +16,9 @@ class ChatMessage(BaseModel):
     dataset_id: Optional[str] = None
     conversation_id: Optional[str] = None
 
+class RenameSessionRequest(BaseModel):
+    title: str
+
 @router.post("/")
 async def process_chat(msg: ChatMessage, user_id: str = Depends(get_current_user_id)):
     if not msg.message.strip():
@@ -33,6 +36,14 @@ async def process_chat(msg: ChatMessage, user_id: str = Depends(get_current_user
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.patch("/sessions/{session_id}")
+async def rename_session(session_id: str, req: RenameSessionRequest, user_id: str = Depends(get_current_user_id)):
+    session = await ChatRepository.get_session_by_id(session_id)
+    if not session or session.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    await ChatRepository.rename_session(session_id, req.title)
+    return {"status": "success"}
 
 @router.get("/history")
 async def get_chat_sessions(user_id: str = Depends(get_current_user_id), limit: int = 20):
